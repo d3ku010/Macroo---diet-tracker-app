@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Button, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { getFoodList, saveFoodToDatabase } from '../../utils/storage';
+import { toast } from '../../utils/toast';
 
 export default function FoodDbScreen() {
     const [foods, setFoods] = useState([]);
@@ -21,7 +22,7 @@ export default function FoodDbScreen() {
 
     const handleAddFood = async () => {
         if (!newFood || !newCalories || !newProtein || !newCarbs || !newFat) {
-            Alert.alert('Please fill all food details');
+            toast('Please fill all food details', 'error');
             return;
         }
 
@@ -35,7 +36,7 @@ export default function FoodDbScreen() {
 
         await saveFoodToDatabase(newFoodItem);
         await load();
-        Alert.alert('Food added to database!');
+        toast('Food added to database!', 'success');
         setNewFood('');
         setNewCalories('');
         setNewProtein('');

@@ -1,10 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { Text, View } from 'react-native';
+import ToastHost from '../../components/ui/Toast';
 
 export default function TabLayout() {
   return (
     <View style={{ flex: 1 }}>
+      <ToastHost />
       <Tabs
         screenOptions={{
           headerShown: true,

@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const FOOD_DB_KEY = 'food_database';
 const MEAL_DB_KEY = 'meal_entries';
+const WATER_DB_KEY = 'water_entries';
 
 // Save a new food item to the food database
 export const saveFoodToDatabase = async (foodItem) => {
@@ -72,5 +73,34 @@ export const clearMeals = async () => {
         await AsyncStorage.removeItem(MEAL_DB_KEY);
     } catch (err) {
         console.error('Failed to clear meals:', err);
+    }
+};
+
+// Save a water intake entry (amount in ml)
+export const saveWaterEntry = async (amountMl) => {
+    try {
+        const existing = await AsyncStorage.getItem(WATER_DB_KEY);
+        const entries = existing ? JSON.parse(existing) : [];
+
+        const newEntry = {
+            amount: Number(amountMl),
+            timestamp: new Date().toISOString(),
+        };
+
+        entries.push(newEntry);
+        await AsyncStorage.setItem(WATER_DB_KEY, JSON.stringify(entries));
+    } catch (err) {
+        console.error('Failed to save water entry:', err);
+    }
+};
+
+// Get all water entries
+export const getWaterEntries = async () => {
+    try {
+        const data = await AsyncStorage.getItem(WATER_DB_KEY);
+        return data ? JSON.parse(data) : [];
+    } catch (err) {
+        console.error('Failed to load water entries:', err);
+        return [];
     }
 };

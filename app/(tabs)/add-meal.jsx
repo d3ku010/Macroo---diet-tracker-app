@@ -1,7 +1,8 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
+  Animated,
   Button,
   KeyboardAvoidingView,
   Platform,
@@ -9,15 +10,19 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TouchableOpacity,
   View
 } from 'react-native';
-import { getFoodDatabase, saveMealEntry } from '../../utils/storage';
+import { getFoodDatabase, saveMealEntry, saveWaterEntry } from '../../utils/storage';
+import { toast } from '../../utils/toast';
 
 export default function AddMealScreen() {
   const [mealType, setMealType] = useState('Breakfast');
   const [foodList, setFoodList] = useState([]);
   const [selectedFood, setSelectedFood] = useState('');
   const [quantity, setQuantity] = useState('');
+  const [waterMl, setWaterMl] = useState('250');
+  const scale = useRef(new Animated.Value(1)).current;
 
 
   useEffect(() => {
@@ -34,13 +39,13 @@ export default function AddMealScreen() {
 
   const handleAddMeal = async () => {
     if (!quantity) {
-      Alert.alert('Please enter quantity');
+      toast('Please enter quantity', 'error');
       return;
     }
 
     const food = foodList.find((f) => f.name === selectedFood);
     if (!food) {
-      Alert.alert('Selected food not found');
+      toast('Selected food not found', 'error');
       return;
     }
 
@@ -62,8 +67,27 @@ export default function AddMealScreen() {
 
 
     await saveMealEntry(newMeal);
-    Alert.alert('Meal added!');
+    toast('Meal added!', 'success');
     setQuantity('');
+  };
+
+  const handleAddWater = async () => {
+    const ml = parseInt(waterMl, 10);
+    if (!ml || ml <= 0) {
+      toast('Please enter a valid amount in ml', 'error');
+      return;
+    }
+
+    await saveWaterEntry(ml);
+
+    // simple scale animation to indicate success
+    Animated.sequence([
+      Animated.timing(scale, { toValue: 1.12, duration: 140, useNativeDriver: true }),
+      Animated.timing(scale, { toValue: 1, duration: 160, useNativeDriver: true }),
+    ]).start();
+
+    toast(`${ml} ml added`, 'success');
+    setWaterMl('250');
   };
 
 
@@ -106,6 +130,26 @@ export default function AddMealScreen() {
 
           <Button title="Add Meal" onPress={handleAddMeal} />
         </View>
+
+        <View style={styles.card}>
+          <Text style={styles.label}>Quick Water</Text>
+          <View style={styles.waterRow}>
+            <View style={styles.glassIconWrap}>
+              <Ionicons name="water-outline" size={28} color="#3b82f6" />
+            </View>
+            <TextInput
+              value={waterMl}
+              onChangeText={setWaterMl}
+              keyboardType="numeric"
+              style={[styles.input, { flex: 1 }]}
+            />
+            <TouchableOpacity onPress={handleAddWater} activeOpacity={0.8}>
+              <Animated.View style={[styles.addButton, { transform: [{ scale }] }]}>
+                <Text style={styles.addButtonText}>Add</Text>
+              </Animated.View>
+            </TouchableOpacity>
+          </View>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -138,4 +182,22 @@ const styles = StyleSheet.create({
     backgroundColor: '#ddd',
     marginVertical: 24,
   },
+  waterRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  glassIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: '#e6f0ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 6,
+  },
+  addButton: {
+    backgroundColor: '#3b82f6',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    marginLeft: 8,
+  },
+  addButtonText: { color: '#fff', fontWeight: '700' },
 });

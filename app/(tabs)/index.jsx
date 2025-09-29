@@ -2,7 +2,7 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BarChart, LineChart } from 'react-native-chart-kit';
-import { getMeals } from '../../utils/storage';
+import { getMeals, getWaterEntries } from '../../utils/storage';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -15,6 +15,7 @@ export default function HomeScreen() {
     fat: 0,
   });
   const [monthlyData, setMonthlyData] = useState(null);
+  const [todayWater, setTodayWater] = useState(0);
 
   const loadMeals = async () => {
     const data = await getMeals();
@@ -33,6 +34,13 @@ export default function HomeScreen() {
 
     setTodayMeals(filtered);
     setTotals(sum);
+    // compute today's water total
+    const waters = await getWaterEntries();
+    const todayDate = new Date().toISOString().slice(0, 10);
+    const todaySum = (waters || [])
+      .filter(w => w.timestamp?.startsWith(todayDate))
+      .reduce((s, w) => s + (w.amount || 0), 0);
+    setTodayWater(todaySum);
   };
 
   useFocusEffect(
@@ -104,6 +112,10 @@ export default function HomeScreen() {
           <Text style={styles.nutrientSmall}>P: {totals.protein.toFixed(1)} g</Text>
           <Text style={styles.nutrientSmall}>C: {totals.carbs.toFixed(1)} g</Text>
           <Text style={styles.nutrientSmall}>F: {totals.fat.toFixed(1)} g</Text>
+        </View>
+        <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center' }}>
+          <Text style={{ fontSize: 14, color: '#444', marginRight: 8 }}>💧</Text>
+          <Text style={{ fontSize: 14, color: '#444' }}>{todayWater} ml</Text>
         </View>
       </View>
 
