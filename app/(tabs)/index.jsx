@@ -2,7 +2,8 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BarChart, LineChart } from 'react-native-chart-kit';
-import { getMeals, getWaterEntries } from '../../utils/storage';
+import HydrationProgress from '../../components/HydrationProgress';
+import { deleteMeal, getMeals, getProfile, getWaterEntries } from '../../utils/storage';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -16,6 +17,7 @@ export default function HomeScreen() {
   });
   const [monthlyData, setMonthlyData] = useState(null);
   const [todayWater, setTodayWater] = useState(0);
+  const [profileGoal, setProfileGoal] = useState(2000);
 
   const loadMeals = async () => {
     const data = await getMeals();
@@ -41,6 +43,13 @@ export default function HomeScreen() {
       .filter(w => w.timestamp?.startsWith(todayDate))
       .reduce((s, w) => s + (w.amount || 0), 0);
     setTodayWater(todaySum);
+    const prof = await getProfile();
+    if (prof?.dailyWaterGoalMl) setProfileGoal(prof.dailyWaterGoalMl);
+  };
+
+  const handleDeleteMeal = async (ts) => {
+    await deleteMeal(ts);
+    await loadMeals();
   };
 
   useFocusEffect(
@@ -113,10 +122,7 @@ export default function HomeScreen() {
           <Text style={styles.nutrientSmall}>C: {totals.carbs.toFixed(1)} g</Text>
           <Text style={styles.nutrientSmall}>F: {totals.fat.toFixed(1)} g</Text>
         </View>
-        <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center' }}>
-          <Text style={{ fontSize: 14, color: '#444', marginRight: 8 }}>💧</Text>
-          <Text style={{ fontSize: 14, color: '#444' }}>{todayWater} ml</Text>
-        </View>
+        <HydrationProgress currentMl={todayWater} goalMl={profileGoal} />
       </View>
 
       <Text style={[styles.heading, { marginTop: 6 }]}>Monthly Dashboard</Text>
@@ -172,8 +178,34 @@ export default function HomeScreen() {
           <View style={{ width: '100%' }}>
             {todayMeals.map((meal, index) => (
               <View key={index} style={styles.mealItem}>
-                <Text style={{ fontWeight: '600' }}>{meal.type}</Text>
-                <Text style={{ color: '#444' }}>{meal.food} • {meal.quantity}g</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View>
+                    <Text style={{ fontWeight: '600' }}>{meal.type}</Text>
+                    <Text style={{ color: '#444' }}>{meal.food} • {meal.quantity}g</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <Text style={{ color: '#e11d48', fontWeight: '700' }} onPress={() => handleDeleteMeal(meal.timestamp)}>Delete</Text>
+                  </View>
+                </View>
+
+                <View style={{ marginTop: 8 }}>
+                  {/* mini nutrient bars */}
+                  <View style={styles.miniRow}>
+                    <Text style={styles.miniLabel}>P</Text>
+                    <View style={styles.miniBg}><View style={[styles.miniFill, { width: `${Math.min(100, (meal.nutrients?.protein || 0) / 2)}%`, backgroundColor: '#22c55e' }]} /></View>
+                    <Text style={styles.miniVal}>{meal.nutrients?.protein?.toFixed(1) || 0}g</Text>
+                  </View>
+                  <View style={styles.miniRow}>
+                    <Text style={styles.miniLabel}>C</Text>
+                    <View style={styles.miniBg}><View style={[styles.miniFill, { width: `${Math.min(100, (meal.nutrients?.carbs || 0) / 3)}%`, backgroundColor: '#ff9f43' }]} /></View>
+                    <Text style={styles.miniVal}>{meal.nutrients?.carbs?.toFixed(1) || 0}g</Text>
+                  </View>
+                  <View style={styles.miniRow}>
+                    <Text style={styles.miniLabel}>F</Text>
+                    <View style={styles.miniBg}><View style={[styles.miniFill, { width: `${Math.min(100, (meal.nutrients?.fat || 0) / 2)}%`, backgroundColor: '#8e44ad' }]} /></View>
+                    <Text style={styles.miniVal}>{meal.nutrients?.fat?.toFixed(1) || 0}g</Text>
+                  </View>
+                </View>
               </View>
             ))}
           </View>

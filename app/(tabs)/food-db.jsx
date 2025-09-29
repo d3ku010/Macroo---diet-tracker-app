@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { getFoodList, saveFoodToDatabase } from '../../utils/storage';
+import { deleteFood, getFoodList, saveFoodToDatabase, updateFood } from '../../utils/storage';
 import { toast } from '../../utils/toast';
 
 export default function FoodDbScreen() {
@@ -51,7 +51,6 @@ export default function FoodDbScreen() {
             keyboardShouldPersistTaps="handled"
         >
             <Text style={styles.heading}>Food Database</Text>
-            <Button title="Refresh" onPress={load} />
 
             <View style={styles.card}>
                 <Text style={styles.subheading}>Add New Food</Text>
@@ -60,7 +59,15 @@ export default function FoodDbScreen() {
                 <TextInput value={newProtein} onChangeText={setNewProtein} placeholder="Protein (per 100g)" keyboardType="numeric" style={styles.input} />
                 <TextInput value={newCarbs} onChangeText={setNewCarbs} placeholder="Carbs (per 100g)" keyboardType="numeric" style={styles.input} />
                 <TextInput value={newFat} onChangeText={setNewFat} placeholder="Fat (per 100g)" keyboardType="numeric" style={styles.input} />
-                <Button title="Add Food to Database" onPress={handleAddFood} />
+                <View style={{ marginTop: 8, flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                        <Button title="Add Food" onPress={handleAddFood} />
+                    </View>
+                    <View style={{ width: 12 }} />
+                </View>
+                <View style={{ marginTop: 8 }}>
+                    <Button title="Refresh" onPress={load} />
+                </View>
             </View>
 
             {foods.length === 0 ? (
@@ -68,8 +75,20 @@ export default function FoodDbScreen() {
             ) : (
                 foods.map((f, i) => (
                     <View key={i} style={styles.foodItem}>
-                        <Text style={styles.name}>{f.name}</Text>
-                        <Text style={styles.meta}>{f.calories} kcal / 100g • P {f.protein} • C {f.carbs} • F {f.fat}</Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <View>
+                                <Text style={styles.name}>{f.name}</Text>
+                                <Text style={styles.meta}>{f.calories} kcal / 100g  P {f.protein}  C {f.carbs}  F {f.fat}</Text>
+                            </View>
+                            <View style={{ flexDirection: 'row', gap: 8 }}>
+                                <Text style={{ color: '#0b63d9', fontWeight: '700' }} onPress={() => {
+                                    // quick edit: toggle name to 'name (edited)' for demonstration
+                                    const newF = { ...f, name: `${f.name} (edited)` };
+                                    updateFood(f.name, newF).then(load).then(() => toast('Food updated', 'success'));
+                                }}>Edit</Text>
+                                <Text style={{ color: '#e11d48', fontWeight: '700' }} onPress={() => { deleteFood(f.name).then(load).then(() => toast('Food deleted', 'error')); }}>Delete</Text>
+                            </View>
+                        </View>
                     </View>
                 ))
             )}

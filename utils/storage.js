@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const FOOD_DB_KEY = 'food_database';
 const MEAL_DB_KEY = 'meal_entries';
 const WATER_DB_KEY = 'water_entries';
+const PROFILE_KEY = 'user_profile';
 
 // Save a new food item to the food database
 export const saveFoodToDatabase = async (foodItem) => {
@@ -37,6 +38,29 @@ export const getFoodDatabase = async () => {
 
 // Backwards-compatible alias: some files import getFoodList
 export const getFoodList = getFoodDatabase;
+
+// Update a food by name (replace)
+export const updateFood = async (oldName, newFood) => {
+    try {
+        const existingData = await AsyncStorage.getItem(FOOD_DB_KEY);
+        let foods = existingData ? JSON.parse(existingData) : [];
+        foods = foods.map(f => (f.name === oldName ? newFood : f));
+        await AsyncStorage.setItem(FOOD_DB_KEY, JSON.stringify(foods));
+    } catch (err) {
+        console.error('Failed to update food:', err);
+    }
+};
+
+export const deleteFood = async (name) => {
+    try {
+        const existingData = await AsyncStorage.getItem(FOOD_DB_KEY);
+        let foods = existingData ? JSON.parse(existingData) : [];
+        foods = foods.filter(f => f.name !== name);
+        await AsyncStorage.setItem(FOOD_DB_KEY, JSON.stringify(foods));
+    } catch (err) {
+        console.error('Failed to delete food:', err);
+    }
+};
 
 // Save a meal entry
 export const saveMealEntry = async (meal) => {
@@ -76,6 +100,28 @@ export const clearMeals = async () => {
     }
 };
 
+export const deleteMeal = async (timestamp) => {
+    try {
+        const existing = await AsyncStorage.getItem(MEAL_DB_KEY);
+        const meals = existing ? JSON.parse(existing) : [];
+        const filtered = meals.filter(m => m.timestamp !== timestamp);
+        await AsyncStorage.setItem(MEAL_DB_KEY, JSON.stringify(filtered));
+    } catch (err) {
+        console.error('Failed to delete meal:', err);
+    }
+};
+
+export const updateMeal = async (timestamp, updatedMeal) => {
+    try {
+        const existing = await AsyncStorage.getItem(MEAL_DB_KEY);
+        const meals = existing ? JSON.parse(existing) : [];
+        const mapped = meals.map(m => (m.timestamp === timestamp ? { ...m, ...updatedMeal } : m));
+        await AsyncStorage.setItem(MEAL_DB_KEY, JSON.stringify(mapped));
+    } catch (err) {
+        console.error('Failed to update meal:', err);
+    }
+};
+
 // Save a water intake entry (amount in ml)
 export const saveWaterEntry = async (amountMl) => {
     try {
@@ -103,4 +149,50 @@ export const getWaterEntries = async () => {
         console.error('Failed to load water entries:', err);
         return [];
     }
+};
+
+// Profile helpers
+export const saveProfile = async (profile) => {
+    try {
+        await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+    } catch (err) {
+        console.error('Failed to save profile:', err);
+    }
+};
+
+export const getProfile = async () => {
+    try {
+        const data = await AsyncStorage.getItem(PROFILE_KEY);
+        return data ? JSON.parse(data) : null;
+    } catch (err) {
+        console.error('Failed to load profile:', err);
+        return null;
+    }
+};
+
+// Simple BMR-based calorie suggestion (Mifflin-St Jeor)
+export const suggestCalories = (profile) => {
+    if (!profile) return null;
+    const { weightKg, heightCm, age, gender, activityLevel, goal } = profile;
+    if (!weightKg || !heightCm || !age) return null;
+
+    let bmr;
+    if (gender === 'female') {
+        bmr = 10 * weightKg + 6.25 * heightCm - 5 * age - 161;
+    } else {
+        bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5;
+    }
+
+    const activityFactor = {
+        sedentary: 1.2,
+        light: 1.375,
+        moderate: 1.55,
+        active: 1.725,
+    }[activityLevel] || 1.2;
+
+    let maintenance = Math.round(bmr * activityFactor);
+    if (goal === 'lose') maintenance = Math.max(1200, maintenance - 500);
+    if (goal === 'gain') maintenance = maintenance + 300;
+
+    return maintenance;
 };

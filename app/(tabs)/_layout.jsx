@@ -10,8 +10,8 @@ export default function TabLayout() {
       <Tabs
         screenOptions={{
           headerShown: true,
-          headerStyle: { backgroundColor: '#fff', elevation: 2 },
-          headerTitleStyle: { fontWeight: '700' },
+          headerStyle: { backgroundColor: '#fff', elevation: 2, height: 56 },
+          headerTitleStyle: { fontWeight: '700', fontSize: 16 },
           tabBarActiveTintColor: '#007aff',
           tabBarInactiveTintColor: '#8e8e93',
           tabBarLabelStyle: { fontSize: 12, paddingBottom: 2 },
@@ -50,6 +50,16 @@ export default function TabLayout() {
               <Ionicons name="fast-food-outline" color={color} size={size} />
             ),
             headerTitle: 'Food DB',
+          }}
+        />
+        <Tabs.Screen
+          name="profile"
+          options={{
+            title: 'Profile',
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="person-outline" color={color} size={size} />
+            ),
+            headerTitle: 'Profile',
           }}
         />
       </Tabs>
