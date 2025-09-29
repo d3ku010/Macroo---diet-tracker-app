@@ -1,50 +1,81 @@
-# Welcome to your Expo app 👋
+# diet-tracker-app
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Light-weight calorie & meal tracker built with Expo + React Native.
 
-## Get started
+This app lets you maintain a simple food database (per-100g nutrition), log meals with quantity, and view daily nutrient summaries. It uses Expo Router's file-based routing and AsyncStorage for local data persistence.
+
+Recommended repo name
+- diet-tracker-app
+
+Short description
+- A minimal Expo React Native app to store foods, log meals, and view daily nutrition summaries.
+
+Features
+- Add foods to a local Food DB (calories, protein, carbs, fat per 100g)
+- Log meals referencing foods from the Food DB and track quantities
+- Daily nutrient summary and simple bar chart visualization
+
+Quick start (local)
 
 1. Install dependencies
 
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```powershell
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+2. Start Expo
 
-## Learn more
+```powershell
+npx expo start
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+3. Open in Expo Go or emulator from the Metro UI
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+Notes about recent fixes (important before pushing)
+- Moved the "Add Food" form into the Food DB tab (`app/(tabs)/food-db.jsx`) so the Food DB tab shows a form first and the list below it.
+- Added a filesystem route for `food-db` so the `Tabs.Screen` in `app/(tabs)/_layout.jsx` is not extraneous.
+- Added `getFoodList` alias in `utils/storage.js` to keep imports consistent and avoid runtime errors.
 
-## Join the community
+Project layout (key files)
+- `app/(tabs)/_layout.jsx` — tab layout and icons
+- `app/(tabs)/index.jsx` — home / summary screen
+- `app/(tabs)/add-meal.jsx` — add meal screen (uses foods from food DB)
+- `app/(tabs)/food-db.jsx` — add-food form + food list
+- `utils/storage.js` — AsyncStorage helpers (food & meal persistence)
 
-Join our community of developers creating universal apps.
+Guidelines for pushing
+- Initialize a git repo (if not already):
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```powershell
+git init
+git add .
+git commit -m "Initial import of diet-tracker-app"
+```
+- Create the remote repo on GitHub (recommended name: `diet-tracker-app`) and push:
+
+```powershell
+git remote add origin <your-repo-url>
+git branch -M main
+git push -u origin main
+```
+
+Troubleshooting notes
+- If you see a warning like "[Layout children]: Too many screens defined. Route 'food-db' is extraneous", ensure a matching filesystem route file exists in the `app` tree (e.g., `app/(tabs)/food-db.jsx`) or remove the manual `Tabs.Screen` entry.
+- If screens import functions that don't exist (for example `getFoodList` vs `getFoodDatabase`), the app will crash when modules are imported — keep exports and imports consistent.
+
+Possible next improvements
+- Add delete/edit for foods in the Food DB
+- Sync or export data (JSON) for backups
+- Small tests around storage helpers
+
+License
+- MIT
+
+---
+
+If you want, I can also:
+- Create a small .gitignore tuned for Expo projects
+- Add a GitHub Actions workflow that runs basic lint checks on push
+- Prepare a short PR-ready commit history if you want tidy commits before pushing
+
+Tell me which of those you'd like and I'll add them.
