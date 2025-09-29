@@ -44,11 +44,15 @@ export default function FoodDbScreen() {
     };
 
     return (
-        <ScrollView contentContainerStyle={styles.container}>
+        <ScrollView
+            style={[styles.container, { backgroundColor: '#f6fbff' }]}
+            contentContainerStyle={{ padding: 16, paddingBottom: 160 }}
+            keyboardShouldPersistTaps="handled"
+        >
             <Text style={styles.heading}>Food Database</Text>
             <Button title="Refresh" onPress={load} />
 
-            <View style={{ marginTop: 12, marginBottom: 20 }}>
+            <View style={styles.card}>
                 <Text style={styles.subheading}>Add New Food</Text>
                 <TextInput value={newFood} onChangeText={setNewFood} placeholder="Name" style={styles.input} />
                 <TextInput value={newCalories} onChangeText={setNewCalories} placeholder="Calories (per 100g)" keyboardType="numeric" style={styles.input} />
@@ -62,7 +66,7 @@ export default function FoodDbScreen() {
                 <Text style={{ color: '#777', marginTop: 12 }}>No foods in the database.</Text>
             ) : (
                 foods.map((f, i) => (
-                    <View key={i} style={styles.item}>
+                    <View key={i} style={styles.foodItem}>
                         <Text style={styles.name}>{f.name}</Text>
                         <Text style={styles.meta}>{f.calories} kcal / 100g • P {f.protein} • C {f.carbs} • F {f.fat}</Text>
                     </View>
@@ -73,9 +77,39 @@ export default function FoodDbScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { padding: 16, backgroundColor: '#fff' },
-    heading: { fontSize: 22, fontWeight: '700', marginBottom: 12 },
-    item: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#eee' },
-    name: { fontSize: 16, fontWeight: '600' },
+    container: { flex: 1 },
+    heading: { fontSize: 22, fontWeight: '700', marginBottom: 12, color: '#223' },
+    subheading: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
+    input: {
+        borderWidth: 1,
+        borderColor: '#eee',
+        padding: 10,
+        borderRadius: 8,
+        marginBottom: 8,
+        backgroundColor: '#fff',
+    },
+    card: {
+        backgroundColor: '#fff',
+        padding: 14,
+        borderRadius: 12,
+        marginVertical: 12,
+        shadowColor: '#000',
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 3 },
+        elevation: 2,
+    },
+    foodItem: {
+        backgroundColor: '#fff',
+        padding: 12,
+        borderRadius: 10,
+        marginBottom: 10,
+        shadowColor: '#000',
+        shadowOpacity: 0.02,
+        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 2 },
+        elevation: 1,
+    },
+    name: { fontSize: 16, fontWeight: '700', color: '#111' },
     meta: { color: '#666', fontSize: 12, marginTop: 4 },
 });

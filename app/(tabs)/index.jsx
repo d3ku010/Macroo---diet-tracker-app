@@ -1,7 +1,7 @@
 import { useFocusEffect } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { BarChart } from 'react-native-chart-kit';
+import { BarChart, LineChart } from 'react-native-chart-kit';
 import { getMeals } from '../../utils/storage';
 
 const screenWidth = Dimensions.get('window').width;
@@ -14,6 +14,7 @@ export default function HomeScreen() {
     carbs: 0,
     fat: 0,
   });
+  const [monthlyData, setMonthlyData] = useState(null);
 
   const loadMeals = async () => {
     const data = await getMeals();
@@ -34,38 +35,115 @@ export default function HomeScreen() {
     setTotals(sum);
   };
 
-  useFocusEffect(() => {
-    loadMeals();
-  });
+  useFocusEffect(
+    useCallback(() => {
+      // refresh today & monthly data when screen focuses
+      loadMeals();
+      computeMonthly();
+    }, [])
+  );
+
+  // helper to compute monthly sums for a nutrient key
+  const computeMonthly = async () => {
+    const lastNDays = 30;
+    const days = [];
+    for (let i = lastNDays - 1; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      days.push(d.toISOString().slice(0, 10));
+    }
+
+    const meals = await getMeals();
+
+    const proteinArr = [];
+    const carbsArr = [];
+    const fatArr = [];
+
+    days.forEach((day) => {
+      const dayMeals = meals.filter((m) => m.timestamp?.startsWith(day));
+      const sumP = dayMeals.reduce((s, m) => s + (m.nutrients?.protein || 0), 0);
+      const sumC = dayMeals.reduce((s, m) => s + (m.nutrients?.carbs || 0), 0);
+      const sumF = dayMeals.reduce((s, m) => s + (m.nutrients?.fat || 0), 0);
+      proteinArr.push(Number(sumP.toFixed(1)));
+      carbsArr.push(Number(sumC.toFixed(1)));
+      fatArr.push(Number(sumF.toFixed(1)));
+    });
+
+    const monthlyLabels = days.map((d, i) => {
+      const date = new Date(d);
+      const dd = String(date.getDate()).padStart(2, '0');
+      const mm = String(date.getMonth() + 1).padStart(2, '0');
+      return i % 5 === 0 ? `${dd}/${mm}` : '';
+    });
+
+    setMonthlyData({
+      labels: monthlyLabels,
+      datasets: [
+        { data: proteinArr, color: (opacity = 1) => `rgba(34,197,94,${opacity})`, strokeWidth: 3 },
+        { data: carbsArr, color: (opacity = 1) => `rgba(255,159,67,${opacity})`, strokeWidth: 3 },
+        { data: fatArr, color: (opacity = 1) => `rgba(142,68,173,${opacity})`, strokeWidth: 3 },
+      ],
+      legend: ['Protein (g)', 'Carbs (g)', 'Fat (g)'],
+    });
+  };
 
   const chartData = {
     labels: ['Protein', 'Carbs', 'Fat'],
     datasets: [{ data: [totals.protein, totals.carbs, totals.fat] }],
   };
 
+
+
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 140 }}>
       <Text style={styles.heading}>Today's Summary</Text>
 
-      <View style={styles.graphBox}>
-        <Text>Calories: {totals.calories.toFixed(1)} kcal</Text>
-        <Text>Protein: {totals.protein.toFixed(1)} g</Text>
-        <Text>Carbs: {totals.carbs.toFixed(1)} g</Text>
-        <Text>Fat: {totals.fat.toFixed(1)} g</Text>
+      <View style={styles.summaryCard}>
+        <Text style={styles.caloriesText}>{totals.calories.toFixed(1)} kcal</Text>
+        <View style={styles.nutrientsRow}>
+          <Text style={styles.nutrientSmall}>P: {totals.protein.toFixed(1)} g</Text>
+          <Text style={styles.nutrientSmall}>C: {totals.carbs.toFixed(1)} g</Text>
+          <Text style={styles.nutrientSmall}>F: {totals.fat.toFixed(1)} g</Text>
+        </View>
       </View>
 
-      <Text style={styles.heading}>Nutrient Chart</Text>
+      <Text style={[styles.heading, { marginTop: 6 }]}>Monthly Dashboard</Text>
+      {monthlyData ? (
+        <View style={styles.chartCard}>
+          <LineChart
+            data={monthlyData}
+            width={screenWidth - 48}
+            height={260}
+            chartConfig={{
+              backgroundGradientFrom: '#f8fbff',
+              backgroundGradientTo: '#f8fbff',
+              decimalPlaces: 1,
+              color: (opacity = 1) => `rgba(0,0,0,${opacity})`,
+              labelColor: () => '#666',
+              propsForDots: { r: '3' },
+            }}
+            bezier
+            style={{ borderRadius: 12 }}
+            withDots={false}
+          />
+        </View>
+      ) : (
+        <Text style={{ color: '#777', marginBottom: 12 }}>Loading monthly data...</Text>
+      )}
+
+      <Text style={styles.heading}>Nutrient Chart (Today)</Text>
       <BarChart
         data={chartData}
         width={screenWidth - 32}
-        height={220}
+        height={180}
         yAxisSuffix=""
         chartConfig={{
-          backgroundGradientFrom: '#fff',
-          backgroundGradientTo: '#fff',
+          backgroundGradientFrom: '#ffffff',
+          backgroundGradientTo: '#f6fbff',
+          decimalPlaces: 1,
           color: (opacity = 1) => `rgba(0, 122, 255, ${opacity})`,
           labelColor: () => '#333',
-          decimalPlaces: 1,
+          style: { borderRadius: 12 },
         }}
         style={{
           borderRadius: 12,
@@ -75,32 +153,72 @@ export default function HomeScreen() {
       />
 
       <Text style={styles.heading}>Meals Logged Today</Text>
-      {todayMeals.length === 0 ? (
-        <Text style={{ color: '#777' }}>No meals logged today.</Text>
-      ) : (
-        todayMeals.map((meal, index) => (
-          <View key={index} style={styles.mealItem}>
-            <Text>{meal.type}: {meal.food} ({meal.quantity}g)</Text>
+      <View style={styles.mealsContainer}>
+        {todayMeals.length === 0 ? (
+          <Text style={{ color: '#777' }}>No meals logged today.</Text>
+        ) : (
+          <View style={{ width: '100%' }}>
+            {todayMeals.map((meal, index) => (
+              <View key={index} style={styles.mealItem}>
+                <Text style={{ fontWeight: '600' }}>{meal.type}</Text>
+                <Text style={{ color: '#444' }}>{meal.food} • {meal.quantity}g</Text>
+              </View>
+            ))}
           </View>
-        ))
-      )}
+        )}
+      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#fff' },
-  heading: { fontSize: 20, fontWeight: 'bold', marginBottom: 12 },
-  graphBox: {
-    marginBottom: 16,
+  container: { flex: 1, padding: 16, backgroundColor: '#f6fbff' },
+  heading: { fontSize: 16, fontWeight: '700', marginBottom: 12, color: '#333' },
+  summaryCard: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 18,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+    marginBottom: 12,
+  },
+  caloriesText: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#ff3b30',
+    textAlign: 'center',
+  },
+  nutrientsRow: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginTop: 10 },
+  nutrientSmall: { fontSize: 14, color: '#555', textAlign: 'center', flex: 1 },
+  chartCard: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
     padding: 12,
-    borderRadius: 10,
-    backgroundColor: '#e0f0ff',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
+    marginBottom: 18,
+    alignItems: 'center',
   },
   mealItem: {
-    backgroundColor: '#f3f3f3',
-    padding: 10,
+    backgroundColor: '#fff',
+    padding: 12,
     marginBottom: 10,
-    borderRadius: 8,
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+  },
+  mealsContainer: {
+    // allow the outer ScrollView to control scrolling so all items remain reachable
+    marginBottom: 20,
   },
 });
