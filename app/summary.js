@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import DailyCalorieChart from '../components/DailyCalorieChart';
+import { useTheme } from '../components/ui/ThemeProvider';
 import { getFoodList, getMeals } from '../utils/storage';
 
 export default function SummaryScreen() {
+    const { theme } = useTheme();
     const [meals, setMeals] = useState([]);
     const [totalCalories, setTotalCalories] = useState(0);
     const [chartData, setChartData] = useState([]);
@@ -38,26 +40,26 @@ export default function SummaryScreen() {
     };
 
     return (
-        <ScrollView contentContainerStyle={styles.container}>
-            <Text style={styles.heading}>Today's Summary</Text>
-            <Text style={{ fontSize: 18, marginBottom: 10 }}>
+        <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.background }]}>
+            <Text style={[styles.heading, { color: theme.text }]}>Today's Summary</Text>
+            <Text style={{ fontSize: 18, marginBottom: 10, color: theme.subText }}>
                 Total Calories: {totalCalories} kcal
             </Text>
 
             {chartData.length > 0 ? (
                 <DailyCalorieChart data={chartData} />
             ) : (
-                <Text style={{ color: '#777' }}>No meals logged today.</Text>
+                <Text style={{ color: theme.subText }}>No meals logged today.</Text>
             )}
 
             <View style={{ marginTop: 30 }}>
-                <Text style={[styles.label, { marginBottom: 10 }]}>Meal History:</Text>
+                <Text style={[styles.label, { marginBottom: 10, color: theme.text }]}>Meal History:</Text>
                 {meals.map((m, i) => (
                     <View key={i} style={styles.mealCard}>
-                        <Text style={styles.mealText}>
+                        <Text style={[styles.mealText, { color: theme.text }]}>
                             {m.quantity} × {m.food}
                         </Text>
-                        <Text style={{ color: '#999', fontSize: 12 }}>
+                        <Text style={{ color: theme.subText, fontSize: 12 }}>
                             {new Date(m.timestamp).toLocaleTimeString()}
                         </Text>
                     </View>
@@ -71,7 +73,6 @@ const styles = StyleSheet.create({
     container: {
         padding: 16,
         paddingBottom: 40,
-        backgroundColor: '#fff',
     },
     heading: {
         fontSize: 24,
@@ -83,7 +84,6 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     mealCard: {
-        backgroundColor: '#f2f2f2',
         padding: 12,
         borderRadius: 8,
         marginBottom: 8,

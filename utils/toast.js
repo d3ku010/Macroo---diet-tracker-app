@@ -1,11 +1,12 @@
 import { showToast } from '../components/ui/Toast';
 
-export const toast = (message, type = 'info', duration = 2500) => {
+// messageOrObj can be a string or an object { message, type, duration, action }
+export const toast = (messageOrObj, type = 'info', duration = 2500) => {
     try {
-        showToast(message, type, duration);
+        if (typeof messageOrObj === 'string') showToast(messageOrObj, type, duration);
+        else showToast(messageOrObj);
     } catch (e) {
-        // fallback
-        console.log('Toast:', message);
+        console.log('Toast:', messageOrObj);
     }
 };
 

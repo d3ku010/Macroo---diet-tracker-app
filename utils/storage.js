@@ -55,10 +55,20 @@ export const deleteFood = async (name) => {
     try {
         const existingData = await AsyncStorage.getItem(FOOD_DB_KEY);
         let foods = existingData ? JSON.parse(existingData) : [];
-        foods = foods.filter(f => f.name !== name);
-        await AsyncStorage.setItem(FOOD_DB_KEY, JSON.stringify(foods));
+        const remaining = [];
+        let removed = null;
+        for (const f of foods) {
+            if (f.name === name && !removed) {
+                removed = f;
+            } else {
+                remaining.push(f);
+            }
+        }
+        await AsyncStorage.setItem(FOOD_DB_KEY, JSON.stringify(remaining));
+        return removed;
     } catch (err) {
         console.error('Failed to delete food:', err);
+        return null;
     }
 };
 
@@ -104,10 +114,17 @@ export const deleteMeal = async (timestamp) => {
     try {
         const existing = await AsyncStorage.getItem(MEAL_DB_KEY);
         const meals = existing ? JSON.parse(existing) : [];
-        const filtered = meals.filter(m => m.timestamp !== timestamp);
-        await AsyncStorage.setItem(MEAL_DB_KEY, JSON.stringify(filtered));
+        const remaining = [];
+        let removed = null;
+        for (const m of meals) {
+            if (m.timestamp === timestamp && !removed) removed = m;
+            else remaining.push(m);
+        }
+        await AsyncStorage.setItem(MEAL_DB_KEY, JSON.stringify(remaining));
+        return removed;
     } catch (err) {
         console.error('Failed to delete meal:', err);
+        return null;
     }
 };
 

@@ -3,20 +3,21 @@ import { Picker } from '@react-native-picker/picker';
 import { useEffect, useRef, useState } from 'react';
 import {
   Animated,
-  Button,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View
 } from 'react-native';
+import PrimaryButton from '../../components/ui/PrimaryButton';
+import { useTheme } from '../../components/ui/ThemeProvider';
 import { getFoodDatabase, saveMealEntry, saveWaterEntry } from '../../utils/storage';
 import { toast } from '../../utils/toast';
 
 export default function AddMealScreen() {
+  const { theme } = useTheme();
   const [mealType, setMealType] = useState('Breakfast');
   const [foodList, setFoodList] = useState([]);
   const [selectedFood, setSelectedFood] = useState('');
@@ -91,6 +92,16 @@ export default function AddMealScreen() {
   };
 
 
+  const addScale = useRef(new Animated.Value(1)).current;
+
+  const onPressAdd = async () => {
+    Animated.sequence([
+      Animated.timing(addScale, { toValue: 0.96, duration: 80, useNativeDriver: true }),
+      Animated.timing(addScale, { toValue: 1, duration: 100, useNativeDriver: true }),
+    ]).start();
+    await handleAddMeal();
+  };
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
@@ -98,14 +109,14 @@ export default function AddMealScreen() {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
     >
       <ScrollView
-        style={[styles.container, { backgroundColor: '#f6fbff' }]}
+        style={[styles.container, { backgroundColor: theme.background }]}
         contentContainerStyle={{ paddingBottom: 140 }}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.heading}>Log a Meal</Text>
+        <Text style={[styles.heading, { color: theme.text }]}>Log a Meal</Text>
 
-        <View style={styles.card}>
-          <Text style={styles.label}>Meal Type</Text>
+        <View style={[styles.card, { backgroundColor: theme.card, shadowColor: theme.muted }]}>
+          <Text style={[styles.label, { color: theme.subText }]}>Meal Type</Text>
           <Picker selectedValue={mealType} onValueChange={setMealType}>
             <Picker.Item label="Breakfast" value="Breakfast" />
             <Picker.Item label="Lunch" value="Lunch" />
@@ -113,41 +124,43 @@ export default function AddMealScreen() {
             <Picker.Item label="Other" value="Other" />
           </Picker>
 
-          <Text style={styles.label}>Food</Text>
+          <Text style={[styles.label, { color: theme.text }]}>Food</Text>
           <Picker selectedValue={selectedFood} onValueChange={setSelectedFood}>
             {foodList.map((food) => (
               <Picker.Item key={food.name} label={food.name} value={food.name} />
             ))}
           </Picker>
 
-          <Text style={styles.label}>Quantity (grams)</Text>
+          <Text style={[styles.label, { color: theme.text }]}>Quantity (grams)</Text>
           <TextInput
             value={quantity}
             onChangeText={setQuantity}
             keyboardType="numeric"
-            style={styles.input}
+            placeholder="e.g. 100"
+            placeholderTextColor={theme.subText}
+            style={[styles.input, { borderColor: theme.muted, color: theme.text }]}
           />
 
-          <Button title="Add Meal" onPress={handleAddMeal} />
+          <Animated.View style={{ transform: [{ scale: addScale }] }}>
+            <PrimaryButton title="Add Meal" onPress={onPressAdd} />
+          </Animated.View>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.label}>Quick Water</Text>
+        <View style={[styles.card, { backgroundColor: theme.card, shadowColor: theme.muted }]}>
+          <Text style={[styles.label, { color: theme.subText }]}>Quick Water</Text>
           <View style={styles.waterRow}>
-            <View style={styles.glassIconWrap}>
-              <Ionicons name="water-outline" size={28} color="#3b82f6" />
+            <View style={[styles.glassIconWrap, { backgroundColor: theme.muted }]}>
+              <Ionicons name="water-outline" size={28} color={theme.primary} />
             </View>
             <TextInput
               value={waterMl}
               onChangeText={setWaterMl}
               keyboardType="numeric"
-              style={[styles.input, { flex: 1 }]}
+              style={[styles.input, { flex: 1, color: theme.text, borderColor: theme.muted }]}
             />
-            <TouchableOpacity onPress={handleAddWater} activeOpacity={0.8}>
-              <Animated.View style={[styles.addButton, { transform: [{ scale }] }]}>
-                <Text style={styles.addButtonText}>Add</Text>
-              </Animated.View>
-            </TouchableOpacity>
+            <Animated.View style={{ transform: [{ scale: addScale }] }}>
+              <PrimaryButton title="Add" onPress={handleAddWater} style={{ paddingHorizontal: 16 }} />
+            </Animated.View>
           </View>
         </View>
       </ScrollView>
@@ -157,14 +170,12 @@ export default function AddMealScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
-  heading: { fontSize: 22, fontWeight: '800', marginBottom: 14, color: '#223' },
-  label: { marginTop: 12, fontWeight: '600', color: '#444' },
+  heading: { fontSize: 22, fontWeight: '800', marginBottom: 14 },
+  label: { marginTop: 12, fontWeight: '600' },
   card: {
-    backgroundColor: '#fff',
     padding: 14,
     borderRadius: 12,
     marginBottom: 16,
-    shadowColor: '#000',
     shadowOpacity: 0.04,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
@@ -172,14 +183,12 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ccc',
     borderRadius: 6,
     padding: 8,
     marginBottom: 12,
   },
   separator: {
     height: 1,
-    backgroundColor: '#ddd',
     marginVertical: 24,
   },
   waterRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -187,17 +196,15 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 10,
-    backgroundColor: '#e6f0ff',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 6,
   },
   addButton: {
-    backgroundColor: '#3b82f6',
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 10,
     marginLeft: 8,
   },
-  addButtonText: { color: '#fff', fontWeight: '700' },
+  addButtonText: { fontWeight: '700' },
 });

@@ -1,36 +1,40 @@
+import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
+import { useTheme } from './ui/ThemeProvider';
 
 export default function HydrationProgress({ currentMl = 0, goalMl = 2000, maxRecommendedMl = 4000 }) {
-    const pctRaw = (currentMl / goalMl) * 100;
-    const pct = Math.min(100, Math.round(pctRaw));
-    const progressWidth = `${Math.min(100, Math.max(0, pct))}%`;
+    const { theme } = useTheme();
+    const pctRaw = (goalMl > 0) ? (currentMl / goalMl) * 100 : 0;
+    const pct = Math.round(pctRaw);
+    const displayPct = pct > 100 ? pct : Math.min(100, Math.max(0, pct));
+    const progressWidth = `${Math.min(100, Math.max(0, displayPct))}%`;
 
     // thresholds
     const danger = currentMl > maxRecommendedMl;
     const good = pct >= 70 && !danger;
     const warn = !good && !danger && pct >= 40;
 
-    const fillColor = danger ? '#ef4444' : good ? '#10b981' : warn ? '#f59e0b' : '#3b82f6';
+    const fillColor = danger ? theme.danger : good ? theme.success : warn ? theme.fat : theme.primary;
 
     return (
         <View style={styles.container}>
             <View style={styles.left}>
-                <Text style={styles.icon}>💧</Text>
+                <Ionicons name="water" size={22} color={theme.primary} />
                 <View style={{ marginLeft: 8 }}>
-                    <Text style={styles.title}>Hydration</Text>
-                    <Text style={styles.sub}>{currentMl} / {goalMl} ml</Text>
+                    <Text style={[styles.title, { color: theme.text }]}>Hydration</Text>
+                    <Text style={[styles.sub, { color: theme.subText }]}>{currentMl} / {goalMl} ml</Text>
                 </View>
             </View>
 
             <View style={styles.barWrap}>
-                <View style={styles.barBg}>
+                <View style={[styles.barBg, { backgroundColor: theme.muted }]}>
                     <View style={[styles.barFill, { width: progressWidth, backgroundColor: fillColor }]} />
                 </View>
-                <Text style={[styles.pct, { color: danger ? '#ef4444' : '#111' }]}>{pct}%</Text>
+                <Text style={[styles.pct, { color: danger ? theme.danger : theme.text }]}>{pct}%</Text>
             </View>
 
             {danger ? (
-                <Text style={styles.danger}>Caution: you've exceeded the recommended daily maximum ({maxRecommendedMl} ml)</Text>
+                <Text style={[styles.danger, { color: theme.danger }]}>Caution: you've exceeded the recommended daily maximum ({maxRecommendedMl} ml)</Text>
             ) : null}
         </View>
     );
@@ -41,10 +45,10 @@ const styles = StyleSheet.create({
     left: { flexDirection: 'row', alignItems: 'center' },
     icon: { fontSize: 22 },
     title: { fontWeight: '700' },
-    sub: { color: '#666', fontSize: 12 },
+    sub: { fontSize: 12 },
     barWrap: { width: '100%', marginTop: 8, alignItems: 'center', flexDirection: 'row' },
-    barBg: { flex: 1, height: 10, backgroundColor: '#eef6ff', borderRadius: 8, overflow: 'hidden' },
-    barFill: { height: 10, backgroundColor: '#3b82f6' },
+    barBg: { flex: 1, height: 10, borderRadius: 8, overflow: 'hidden' },
+    barFill: { height: 10 },
     pct: { marginLeft: 10, fontWeight: '700' },
-    danger: { color: '#ef4444', fontWeight: '700' },
+    danger: { fontWeight: '700' },
 });

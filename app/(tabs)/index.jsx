@@ -1,13 +1,17 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { BarChart, LineChart } from 'react-native-chart-kit';
+import { useCallback, useRef, useState } from 'react';
+import { Animated, Dimensions, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import HydrationProgress from '../../components/HydrationProgress';
-import { deleteMeal, getMeals, getProfile, getWaterEntries } from '../../utils/storage';
+import PrimaryButton from '../../components/ui/PrimaryButton';
+import { useTheme } from '../../components/ui/ThemeProvider';
+import { deleteMeal, getMeals, getProfile, getWaterEntries, suggestCalories, updateMeal } from '../../utils/storage';
+import { toast } from '../../utils/toast';
 
 const screenWidth = Dimensions.get('window').width;
 
 export default function HomeScreen() {
+  const { theme, toggle } = useTheme();
   const [todayMeals, setTodayMeals] = useState([]);
   const [totals, setTotals] = useState({
     calories: 0,
@@ -15,7 +19,7 @@ export default function HomeScreen() {
     carbs: 0,
     fat: 0,
   });
-  const [monthlyData, setMonthlyData] = useState(null);
+  const [recommendedCal, setRecommendedCal] = useState(null);
   const [todayWater, setTodayWater] = useState(0);
   const [profileGoal, setProfileGoal] = useState(2000);
 
@@ -45,204 +49,181 @@ export default function HomeScreen() {
     setTodayWater(todaySum);
     const prof = await getProfile();
     if (prof?.dailyWaterGoalMl) setProfileGoal(prof.dailyWaterGoalMl);
+    const rec = suggestCalories(prof);
+    if (rec) setRecommendedCal(rec);
   };
 
   const handleDeleteMeal = async (ts) => {
-    await deleteMeal(ts);
+    const removed = await deleteMeal(ts);
     await loadMeals();
+    toast({ message: 'Meal deleted', type: 'error', action: { label: 'Undo', onPress: async () => { if (removed) { const { saveMealEntry } = require('../../utils/storage'); await saveMealEntry(removed); await loadMeals(); toast('Restored meal', 'success'); } } } });
+  };
+
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editingMeal, setEditingMeal] = useState(null);
+  const [editQuantity, setEditQuantity] = useState('');
+
+  const openEditMeal = (meal) => {
+    setEditingMeal(meal);
+    setEditQuantity(String(meal.quantity || ''));
+    setEditModalVisible(true);
+  };
+
+  const handleSaveMealEdit = async () => {
+    if (!editingMeal) return;
+    const updated = { quantity: parseFloat(editQuantity) || editingMeal.quantity };
+    await updateMeal(editingMeal.timestamp, updated);
+    setEditModalVisible(false);
+    setEditingMeal(null);
+    await loadMeals();
+    // reuse toast
+    const { showToast } = require('../../components/ui/Toast');
   };
 
   useFocusEffect(
     useCallback(() => {
-      // refresh today & monthly data when screen focuses
+      // refresh today when screen focuses
       loadMeals();
-      computeMonthly();
     }, [])
   );
 
-  // helper to compute monthly sums for a nutrient key
-  const computeMonthly = async () => {
-    const lastNDays = 30;
-    const days = [];
-    for (let i = lastNDays - 1; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      days.push(d.toISOString().slice(0, 10));
-    }
+  // monthly data moved to Monthly tab
 
-    const meals = await getMeals();
+  // simplified: we won't show nutrient chart on home — monthly tab handles trends
 
-    const proteinArr = [];
-    const carbsArr = [];
-    const fatArr = [];
 
-    days.forEach((day) => {
-      const dayMeals = meals.filter((m) => m.timestamp?.startsWith(day));
-      const sumP = dayMeals.reduce((s, m) => s + (m.nutrients?.protein || 0), 0);
-      const sumC = dayMeals.reduce((s, m) => s + (m.nutrients?.carbs || 0), 0);
-      const sumF = dayMeals.reduce((s, m) => s + (m.nutrients?.fat || 0), 0);
-      proteinArr.push(Number(sumP.toFixed(1)));
-      carbsArr.push(Number(sumC.toFixed(1)));
-      fatArr.push(Number(sumF.toFixed(1)));
-    });
 
-    const monthlyLabels = days.map((d, i) => {
-      const date = new Date(d);
-      const dd = String(date.getDate()).padStart(2, '0');
-      const mm = String(date.getMonth() + 1).padStart(2, '0');
-      return i % 5 === 0 ? `${dd}/${mm}` : '';
-    });
+  const anim = useRef(new Animated.Value(0)).current;
 
-    setMonthlyData({
-      labels: monthlyLabels,
-      datasets: [
-        { data: proteinArr, color: (opacity = 1) => `rgba(34,197,94,${opacity})`, strokeWidth: 3 },
-        { data: carbsArr, color: (opacity = 1) => `rgba(255,159,67,${opacity})`, strokeWidth: 3 },
-        { data: fatArr, color: (opacity = 1) => `rgba(142,68,173,${opacity})`, strokeWidth: 3 },
-      ],
-      legend: ['Protein (g)', 'Carbs (g)', 'Fat (g)'],
-    });
+  const pressToggle = () => {
+    Animated.sequence([
+      Animated.timing(anim, { toValue: 1, duration: 160, useNativeDriver: true }),
+      Animated.timing(anim, { toValue: 0, duration: 200, useNativeDriver: true })
+    ]).start(() => toggle());
   };
 
-  const chartData = {
-    labels: ['Protein', 'Carbs', 'Fat'],
-    datasets: [{ data: [totals.protein, totals.carbs, totals.fat] }],
-  };
-
-
+  const rotation = anim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '220deg'] });
+  const scale = anim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.15] });
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 140 }}>
-      <Text style={styles.heading}>Today's Summary</Text>
-
-      <View style={styles.summaryCard}>
-        <Text style={styles.caloriesText}>{totals.calories.toFixed(1)} kcal</Text>
-        <View style={styles.nutrientsRow}>
-          <Text style={styles.nutrientSmall}>P: {totals.protein.toFixed(1)} g</Text>
-          <Text style={styles.nutrientSmall}>C: {totals.carbs.toFixed(1)} g</Text>
-          <Text style={styles.nutrientSmall}>F: {totals.fat.toFixed(1)} g</Text>
-        </View>
-        <HydrationProgress currentMl={todayWater} goalMl={profileGoal} />
+    <ScrollView style={[styles.container, { backgroundColor: theme.background }]} contentContainerStyle={{ paddingBottom: 140 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Text style={[styles.heading, { color: theme.text }]}>Today's Summary</Text>
+        <TouchableOpacity onPress={pressToggle} accessibilityLabel="Toggle theme" style={{ padding: 8 }}>
+          <Animated.View style={{ transform: [{ rotate: rotation }, { scale }] }}>
+            <Ionicons name={theme.name === 'dark' ? 'moon' : 'sunny'} size={20} color={theme.primary} />
+          </Animated.View>
+        </TouchableOpacity>
       </View>
 
-      <Text style={[styles.heading, { marginTop: 6 }]}>Monthly Dashboard</Text>
-      {monthlyData ? (
-        <View style={styles.chartCard}>
-          <LineChart
-            data={monthlyData}
-            width={screenWidth - 48}
-            height={260}
-            chartConfig={{
-              backgroundGradientFrom: '#f8fbff',
-              backgroundGradientTo: '#f8fbff',
-              decimalPlaces: 1,
-              color: (opacity = 1) => `rgba(0,0,0,${opacity})`,
-              labelColor: () => '#666',
-              propsForDots: { r: '3' },
-            }}
-            bezier
-            style={{ borderRadius: 12 }}
-            withDots={false}
-          />
+      <View style={[styles.summaryCard, { backgroundColor: theme.card, shadowColor: theme.muted }]}>
+        <View style={{ width: '100%', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.caloriesLabel, { color: theme.subText }]}>Calories</Text>
+            <Text style={[styles.caloriesText, { color: theme.primary, textAlign: 'left' }]}>{totals.calories.toFixed(0)} kcal</Text>
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            {recommendedCal ? (
+              <Text style={[styles.calorieSub, { color: theme.subText }]}>{`${totals.calories.toFixed(0)} / ${recommendedCal} kcal`}</Text>
+            ) : null}
+            {recommendedCal ? (
+              <View style={styles.inlinePct}>
+                <Text style={styles.inlinePctText}>{Math.round((totals.calories / recommendedCal) * 100)}%</Text>
+              </View>
+            ) : null}
+          </View>
         </View>
-      ) : (
-        <Text style={{ color: '#777', marginBottom: 12 }}>Loading monthly data...</Text>
-      )}
+        <View style={[styles.nutrientsRow, { marginTop: 12 }]}>
+          <View style={styles.macroItem}><Text style={[styles.macroLabel, { color: theme.subText }]}>Protein</Text><Text style={[styles.macroValue, { color: theme.success }]}>{totals.protein.toFixed(1)} g</Text></View>
+          <View style={styles.macroItem}><Text style={[styles.macroLabel, { color: theme.subText }]}>Carbs</Text><Text style={[styles.macroValue, { color: theme.primary }]}>{totals.carbs.toFixed(1)} g</Text></View>
+          <View style={styles.macroItem}><Text style={[styles.macroLabel, { color: theme.subText }]}>Fat</Text><Text style={[styles.macroValue, { color: theme.fat }]}>{totals.fat.toFixed(1)} g</Text></View>
+        </View>
+        <View style={{ width: '100%', marginTop: 12 }}>
+          <HydrationProgress currentMl={todayWater} goalMl={profileGoal} />
+        </View>
 
-      <Text style={styles.heading}>Nutrient Chart (Today)</Text>
-      <BarChart
-        data={chartData}
-        width={screenWidth - 32}
-        height={180}
-        yAxisSuffix=""
-        chartConfig={{
-          backgroundGradientFrom: '#ffffff',
-          backgroundGradientTo: '#f6fbff',
-          decimalPlaces: 1,
-          color: (opacity = 1) => `rgba(0, 122, 255, ${opacity})`,
-          labelColor: () => '#333',
-          style: { borderRadius: 12 },
-        }}
-        style={{
-          borderRadius: 12,
-          marginBottom: 24,
-        }}
-        fromZero
-      />
+      </View>
 
-      <Text style={styles.heading}>Meals Logged Today</Text>
-      <View style={styles.mealsContainer}>
+      <Text style={[styles.heading, { color: theme.text }]}>Meals Logged Today</Text>
+      <View style={styles.mealsContainerSimple}>
         {todayMeals.length === 0 ? (
-          <Text style={{ color: '#777' }}>No meals logged today.</Text>
+          <Text style={{ color: theme.subText }}>No meals logged today.</Text>
         ) : (
-          <View style={{ width: '100%' }}>
-            {todayMeals.map((meal, index) => (
-              <View key={index} style={styles.mealItem}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <View>
-                    <Text style={{ fontWeight: '600' }}>{meal.type}</Text>
-                    <Text style={{ color: '#444' }}>{meal.food} • {meal.quantity}g</Text>
-                  </View>
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <Text style={{ color: '#e11d48', fontWeight: '700' }} onPress={() => handleDeleteMeal(meal.timestamp)}>Delete</Text>
+          todayMeals.map((meal) => (
+            <View key={meal.timestamp} style={styles.mealItem}>
+              <View style={styles.mealHeaderTop}>
+                <View style={styles.mealTitleLeft}>
+                  <View style={styles.mealTitleRow}>
+                    <View style={[styles.badge, { backgroundColor: theme.pillBg }]}>
+                      <Text style={[styles.badgeText, { color: theme.text }]}>{meal.type}</Text>
+                    </View>
+                    <Text style={[styles.mealTitle, { color: theme.text }]}>{meal.food}</Text>
                   </View>
                 </View>
-
-                <View style={{ marginTop: 8 }}>
-                  {/* mini nutrient bars */}
-                  <View style={styles.miniRow}>
-                    <Text style={styles.miniLabel}>P</Text>
-                    <View style={styles.miniBg}><View style={[styles.miniFill, { width: `${Math.min(100, (meal.nutrients?.protein || 0) / 2)}%`, backgroundColor: '#22c55e' }]} /></View>
-                    <Text style={styles.miniVal}>{meal.nutrients?.protein?.toFixed(1) || 0}g</Text>
-                  </View>
-                  <View style={styles.miniRow}>
-                    <Text style={styles.miniLabel}>C</Text>
-                    <View style={styles.miniBg}><View style={[styles.miniFill, { width: `${Math.min(100, (meal.nutrients?.carbs || 0) / 3)}%`, backgroundColor: '#ff9f43' }]} /></View>
-                    <Text style={styles.miniVal}>{meal.nutrients?.carbs?.toFixed(1) || 0}g</Text>
-                  </View>
-                  <View style={styles.miniRow}>
-                    <Text style={styles.miniLabel}>F</Text>
-                    <View style={styles.miniBg}><View style={[styles.miniFill, { width: `${Math.min(100, (meal.nutrients?.fat || 0) / 2)}%`, backgroundColor: '#8e44ad' }]} /></View>
-                    <Text style={styles.miniVal}>{meal.nutrients?.fat?.toFixed(1) || 0}g</Text>
+                <View style={styles.mealRightTop}>
+                  <Text style={[styles.mealQty, { color: theme.text }]}>{meal.quantity} g • {(meal.nutrients?.calories || 0).toFixed(0)} kcal</Text>
+                  <View style={{ flexDirection: 'row', marginTop: 6 }}>
+                    <TouchableOpacity onPress={() => openEditMeal(meal)} style={styles.iconButton} accessibilityLabel="Edit meal">
+                      <Ionicons name="pencil" size={18} color={theme.primary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleDeleteMeal(meal.timestamp)} style={[styles.iconButton, { marginLeft: 8 }]} accessibilityLabel="Delete meal">
+                      <Ionicons name="trash" size={18} color={theme.danger} />
+                    </TouchableOpacity>
                   </View>
                 </View>
               </View>
-            ))}
-          </View>
+
+              <View style={styles.macroRowCompact}>
+                <Text style={[styles.macroText, { color: theme.subText }]}>P {(meal.nutrients?.protein || 0).toFixed(1)}g</Text>
+                <Text style={[styles.macroText, { color: theme.subText }]}>C {(meal.nutrients?.carbs || 0).toFixed(1)}g</Text>
+                <Text style={[styles.macroText, { color: theme.subText }]}>F {(meal.nutrients?.fat || 0).toFixed(1)}g</Text>
+                <Text style={[styles.macroTime, { color: theme.subText }]}>{new Date(meal.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+              </View>
+            </View>
+          ))
         )}
       </View>
+      <Modal visible={editModalVisible} animationType="slide" transparent={true} onRequestClose={() => setEditModalVisible(false)}>
+        <View style={{ flex: 1, backgroundColor: theme.name === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.3)', justifyContent: 'center', padding: 24 }}>
+          <View style={{ backgroundColor: theme.card, borderRadius: 12, padding: 16 }}>
+            <Text style={{ fontWeight: '700', fontSize: 16, marginBottom: 8, color: theme.text }}>Edit Meal</Text>
+            <Text style={{ color: theme.subText, marginBottom: 8 }}>{editingMeal?.food}</Text>
+            <TextInput value={editQuantity} onChangeText={setEditQuantity} placeholder="Quantity (g)" keyboardType="numeric" style={{ borderWidth: 1, borderColor: theme.muted, padding: 10, borderRadius: 8, marginBottom: 8, color: theme.text }} />
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
+              <PrimaryButton title="Cancel" onPress={() => setEditModalVisible(false)} style={{ marginRight: 8 }} />
+              <PrimaryButton title="Save" onPress={handleSaveMealEdit} />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#f6fbff' },
-  heading: { fontSize: 16, fontWeight: '700', marginBottom: 12, color: '#333' },
+  container: { flex: 1, padding: 16 },
+  heading: { fontSize: 16, fontWeight: '700', marginBottom: 12 },
   summaryCard: {
-    backgroundColor: '#fff',
     borderRadius: 14,
     padding: 18,
     alignItems: 'center',
-    shadowColor: '#000',
     shadowOpacity: 0.08,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
     marginBottom: 12,
   },
+  caloriesLabel: { fontSize: 12, fontWeight: '600' },
   caloriesText: {
     fontSize: 32,
     fontWeight: '800',
-    color: '#ff3b30',
     textAlign: 'center',
   },
   nutrientsRow: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginTop: 10 },
-  nutrientSmall: { fontSize: 14, color: '#555', textAlign: 'center', flex: 1 },
+  nutrientSmall: { fontSize: 14, textAlign: 'center', flex: 1 },
   chartCard: {
-    backgroundColor: '#fff',
     borderRadius: 14,
     padding: 12,
-    shadowColor: '#000',
     shadowOpacity: 0.06,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
@@ -251,11 +232,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   mealItem: {
-    backgroundColor: '#fff',
     padding: 12,
     marginBottom: 10,
     borderRadius: 10,
-    shadowColor: '#000',
     shadowOpacity: 0.03,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
@@ -265,4 +244,36 @@ const styles = StyleSheet.create({
     // allow the outer ScrollView to control scrolling so all items remain reachable
     marginBottom: 20,
   },
+  recommendedLabel: { fontSize: 12 },
+  recommendedValue: { fontWeight: '700' },
+  calorieRow: { flexDirection: 'row', alignItems: 'center' },
+  caloriePercent: { width: 40, fontWeight: '800' },
+  calorieBarBg: { flex: 1, height: 10, borderRadius: 8, overflow: 'hidden' },
+  calorieBarFill: { height: 10 },
+  miniRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+  miniLabel: { width: 18, fontWeight: '700' },
+  miniBg: { flex: 1, height: 8, borderRadius: 6, overflow: 'hidden', marginHorizontal: 8 },
+  miniFill: { height: 8 },
+  miniVal: { width: 48, textAlign: 'right' },
+  /* new meal card styles */
+  mealsContainerSimple: { marginBottom: 20 },
+  mealHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  mealInfo: { flex: 1, paddingRight: 8 },
+  mealTitleRow: { flexDirection: 'row', alignItems: 'center' },
+  badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginRight: 8 },
+  badgeText: { fontSize: 12, fontWeight: '700' },
+  mealTitle: { fontWeight: '700', fontSize: 16 },
+  mealMeta: { marginTop: 6, fontSize: 13 },
+  actionsRow: { flexDirection: 'row', alignItems: 'center' },
+  iconButton: { padding: 6, borderRadius: 8 },
+  macroRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 },
+  macroText: { fontSize: 13 },
+  macroTime: { fontSize: 12, marginLeft: 8 },
+  inlinePct: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, marginLeft: 8 },
+  inlinePctText: { fontWeight: '800' },
+  mealHeaderTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  mealTitleLeft: { flex: 1, paddingRight: 8 },
+  mealRightTop: { alignItems: 'flex-end' },
+  mealQty: { fontWeight: '700' },
+  macroRowCompact: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
 });
