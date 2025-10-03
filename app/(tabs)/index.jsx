@@ -3,6 +3,7 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { Animated, Dimensions, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import HydrationProgress from '../../components/HydrationProgress';
+import PaletteSwitcher from '../../components/ui/PaletteSwitcher';
 import PrimaryButton from '../../components/ui/PrimaryButton';
 import { useTheme } from '../../components/ui/ThemeProvider';
 import { deleteMeal, getMeals, getProfile, getWaterEntries, suggestCalories, updateMeal } from '../../utils/storage';
@@ -109,11 +110,14 @@ export default function HomeScreen() {
     <ScrollView style={[styles.container, { backgroundColor: theme.background }]} contentContainerStyle={{ paddingBottom: 140 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <Text style={[styles.heading, { color: theme.text }]}>Today's Summary</Text>
-        <TouchableOpacity onPress={pressToggle} accessibilityLabel="Toggle theme" style={{ padding: 8 }}>
-          <Animated.View style={{ transform: [{ rotate: rotation }, { scale }] }}>
-            <Ionicons name={theme.name === 'dark' ? 'moon' : 'sunny'} size={20} color={theme.primary} />
-          </Animated.View>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <PaletteSwitcher compact />
+          <TouchableOpacity onPress={pressToggle} accessibilityLabel="Toggle theme" style={{ padding: 8 }}>
+            <Animated.View style={{ transform: [{ rotate: rotation }, { scale }] }}>
+              <Ionicons name={theme.name === 'dark' ? 'moon' : 'sunny'} size={20} color={theme.primary} />
+            </Animated.View>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={[styles.summaryCard, { backgroundColor: theme.card, shadowColor: theme.muted }]}>

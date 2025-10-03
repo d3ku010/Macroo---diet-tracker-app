@@ -1,53 +1,116 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { Appearance, Text } from 'react-native';
 
 const ThemeContext = createContext();
 
-const light = {
-    name: 'light',
-    // soft, retro-90s pastel base for light mode
-    background: '#fff9fb', // pale, warm lavender-cream
-    card: '#ffffff',
-    // deep indigo text for readability on the pale background
-    text: '#0b0622',
-    subText: '#6a5aa8',
-    // softened purple accent for better legibility
-    primary: '#6b57e6',
-    // text color to use on top of primary backgrounds
-    onPrimary: '#ffffff',
-    // complementary accents
-    success: '#17c89f',
-    danger: '#e96f9c',
-    muted: '#f6f3fb',
-    pillBg: '#efe7ff',
-    fat: '#e08db6',
-};
-
-const dark = {
-    name: 'dark',
-    // deep near-black with a tiny purple cast for that neon-on-black feeling
-    background: '#07020f',
-    card: '#0f0718',
-    // slightly warmer icy-blue text to sit on top of the deep background
-    text: '#e9f1ff',
-    subText: '#a3b0ff',
-    // softened neon purple with a bit more warmth
-    primary: '#7e6bf0',
-    // text color used on top of primary backgrounds (keep high contrast)
-    onPrimary: '#ffffff',
-    // neon success & danger to fit retro palette
-    success: '#34d6a8',
-    danger: '#e97aa8',
-    // subtle muted/card accents
-    muted: '#141024',
-    pillBg: '#120a2a',
-    fat: '#9be6d9',
+// Distinct palettes: cyber (neon cyan), vapor (magenta/cyan), solar (warm amber)
+const palettes = {
+    cyber: {
+        light: {
+            name: 'light',
+            background: '#f6fbff',
+            card: '#ffffff',
+            text: '#041228',
+            subText: '#3a6b89',
+            primary: '#0077ff',
+            onPrimary: '#ffffff',
+            success: '#00c99a',
+            danger: '#ff4e89',
+            muted: '#eef6fb',
+            pillBg: '#e6f6ff',
+            fat: '#ff7a6a',
+        },
+        dark: {
+            name: 'dark',
+            background: '#030014',
+            card: '#0b0020',
+            text: '#e8f6ff',
+            subText: '#9fdfff',
+            primary: '#00f6ff',
+            onPrimary: '#00121a',
+            success: '#17e6b8',
+            danger: '#ff6ba3',
+            muted: '#06102a',
+            pillBg: '#03102a',
+            fat: '#ffd06b',
+        }
+    },
+    vapor: {
+        light: {
+            name: 'light',
+            background: '#fff7ff',
+            card: '#fff1ff',
+            text: '#201033',
+            subText: '#8f5c8f',
+            primary: '#ff2db4',
+            onPrimary: '#ffffff',
+            success: '#00cfa3',
+            danger: '#d94b7a',
+            muted: '#fbf0fb',
+            pillBg: '#ffe8ff',
+            fat: '#ffd36e',
+        },
+        dark: {
+            name: 'dark',
+            background: '#090016',
+            card: '#160021',
+            text: '#ffe8ff',
+            subText: '#ffb6ff',
+            primary: '#ff4bd9',
+            onPrimary: '#2a001b',
+            success: '#6ff3d0',
+            danger: '#ff7aa6',
+            muted: '#14041a',
+            pillBg: '#180022',
+            fat: '#ffd36e',
+        }
+    },
+    solar: {
+        light: {
+            name: 'light',
+            background: '#fffaf4',
+            card: '#fff7ef',
+            text: '#2b1f0e',
+            subText: '#7a5b3a',
+            primary: '#ff8f00',
+            onPrimary: '#ffffff',
+            success: '#17b68a',
+            danger: '#d44b4b',
+            muted: '#f7efe6',
+            pillBg: '#fff3e0',
+            fat: '#e07a5f',
+        },
+        dark: {
+            name: 'dark',
+            background: '#0b0700',
+            card: '#1a0f00',
+            text: '#fff7e6',
+            subText: '#ffd89a',
+            primary: '#ffb703',
+            onPrimary: '#1a1200',
+            success: '#7ef0a3',
+            danger: '#ff6b6b',
+            muted: '#171107',
+            pillBg: '#2a1400',
+            fat: '#ff8f6b',
+        }
+    }
 };
 
 export function ThemeProvider({ children }) {
     const colorScheme = Appearance.getColorScheme?.() || 'light';
-    const [theme, setThemeState] = useState(colorScheme === 'dark' ? dark : light);
+    // paletteName persisted separately; default to 'cyber'
+    const [paletteName, setPaletteName] = useState('cyber');
+
+    // build active theme tokens by combining selected palette + color scheme
+    const activeTokens = useMemo(() => {
+        const mode = colorScheme === 'dark' ? 'dark' : 'light';
+        const pal = palettes[paletteName] || palettes.retro;
+        return pal[mode];
+    }, [paletteName, colorScheme]);
+
+    const [theme, setThemeState] = useState(activeTokens);
 
     // keep a reference to previous Text.defaultProps.style so we can restore it
     useEffect(() => {
@@ -66,19 +129,23 @@ export function ThemeProvider({ children }) {
     useEffect(() => {
         (async () => {
             try {
-                const saved = await AsyncStorage.getItem('ui_theme');
-                if (saved) {
-                    setThemeState(saved === 'dark' ? dark : light);
+                const savedTheme = await AsyncStorage.getItem('ui_theme');
+                const savedPalette = await AsyncStorage.getItem('ui_palette');
+                if (savedPalette && palettes[savedPalette]) setPaletteName(savedPalette);
+                if (savedTheme) {
+                    // savedTheme holds 'dark' | 'light' previously
+                    setThemeState(savedTheme === 'dark' ? palettes[paletteName].dark : palettes[paletteName].light);
                     return;
                 }
             } catch (e) {
                 // ignore
             }
             const sub = Appearance.addChangeListener?.(({ colorScheme: cs }) => {
-                setThemeState(cs === 'dark' ? dark : light);
+                setThemeState(cs === 'dark' ? palettes[paletteName].dark : palettes[paletteName].light);
             });
             return () => sub?.remove?.();
         })();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const setTheme = async (name) => {
@@ -87,19 +154,34 @@ export function ThemeProvider({ children }) {
         } catch (e) {
             // ignore
         }
-        setThemeState(name === 'dark' ? dark : light);
+        setThemeState(name === 'dark' ? palettes[paletteName].dark : palettes[paletteName].light);
     };
 
     const toggle = () => {
         setThemeState((t) => {
-            const next = t.name === 'dark' ? light : dark;
-            AsyncStorage.setItem('ui_theme', next.name).catch(() => { });
+            const nextName = t.name === 'dark' ? 'light' : 'dark';
+            AsyncStorage.setItem('ui_theme', nextName).catch(() => { });
+            const next = nextName === 'dark' ? palettes[paletteName].dark : palettes[paletteName].light;
             return next;
         });
     };
 
+    // change palette and persist
+    const setPalette = async (pName) => {
+        if (!palettes[pName]) return;
+        try {
+            await AsyncStorage.setItem('ui_palette', pName);
+        } catch (e) {
+            // ignore
+        }
+        setPaletteName(pName);
+        // update theme tokens to match current color scheme
+        const mode = colorScheme === 'dark' ? 'dark' : 'light';
+        setThemeState(palettes[pName][mode]);
+    };
+
     return (
-        <ThemeContext.Provider value={{ theme, setTheme, toggle }}>
+        <ThemeContext.Provider value={{ theme, setTheme, toggle, paletteName, setPalette, palettesList: Object.keys(palettes) }}>
             {children}
         </ThemeContext.Provider>
     );
