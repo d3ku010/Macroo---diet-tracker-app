@@ -1,19 +1,23 @@
 # diet-tracker-app
 
-Light-weight calorie & meal tracker built with Expo + React Native.
+Light-weight calorie & meal tracker built with Expo + React Native (Expo Router).
 
-This app lets you maintain a simple food database (per-100g nutrition), log meals with quantity, and view daily nutrient summaries. It uses Expo Router's file-based routing and AsyncStorage for local data persistence.
+This app lets you maintain a simple food database (per-100g nutrition), log meals with quantity, and view daily nutrient summaries. It uses file-based routing via Expo Router and AsyncStorage for local persistence.
 
-Recommended repo name
-- diet-tracker-app
-
-Short description
-- A minimal Expo React Native app to store foods, log meals, and view daily nutrition summaries.
+Quick overview of recent changes
+- Added a palette switcher (three distinct palettes) and palette persistence.
+- Theme toggle moved from Profile to the Overview (home) header — use the animated sun/moon icon to switch light/dark within the selected palette.
+- Reworked the History/Monthly screen: Daily + Monthly sections, compact segmented controls, and chart focused on macros (protein/carbs/fat).
 
 Features
 - Add foods to a local Food DB (calories, protein, carbs, fat per 100g)
 - Log meals referencing foods from the Food DB and track quantities
-- Daily nutrient summary and simple bar chart visualization
+- Daily nutrient summary and simple chart visualization
+- Theme + palette switching (dark/light per palette)
+
+Requirements & recommended environment
+- Node.js: recommend Node 18.x (18.18.0 tested). Newer Node versions (20/22) may cause native postinstall scripts to fail for some packages.
+- Expo CLI: use the bundled `npx expo` commands as shown below.
 
 Quick start (local)
 
@@ -23,25 +27,45 @@ Quick start (local)
 npm install
 ```
 
-2. Start Expo
+2. Start Expo (recommended: use Tunnel when testing on mobile to avoid LAN/VPN/firewall issues)
 
 ```powershell
-npx expo start
+# Preferred when testing on a phone across networks
+npx expo start --tunnel -c
+
+# Or (LAN) if your phone and dev machine are on the same network
+npx expo start -c
 ```
 
-3. Open in Expo Go or emulator from the Metro UI
-
-Notes about recent fixes (important before pushing)
-- Moved the "Add Food" form into the Food DB tab (`app/(tabs)/food-db.jsx`) so the Food DB tab shows a form first and the list below it.
-- Added a filesystem route for `food-db` so the `Tabs.Screen` in `app/(tabs)/_layout.jsx` is not extraneous.
-- Added `getFoodList` alias in `utils/storage.js` to keep imports consistent and avoid runtime errors.
+3. Open in Expo Go
+- Scan the QR code shown in the Metro UI or open the URL in Expo Go. If you see "Failed to download remote update" on the phone, switch to `--tunnel` or use USB with `adb reverse tcp:8081 tcp:8081` (Android).
 
 Project layout (key files)
 - `app/(tabs)/_layout.jsx` — tab layout and icons
-- `app/(tabs)/index.jsx` — home / summary screen
-- `app/(tabs)/add-meal.jsx` — add meal screen (uses foods from food DB)
-- `app/(tabs)/food-db.jsx` — add-food form + food list
+- `app/(tabs)/index.jsx` — overview / summary screen (now contains the theme toggle and PaletteSwitcher)
+- `app/(tabs)/monthly.jsx` — history / monthly trends (daily/monthly split, segmented controls)
+- `app/(tabs)/add-meal.jsx` — add meal screen
+- `app/(tabs)/food-db.jsx` — food database + add-food form
+- `components/ui/ThemeProvider.jsx` — theme & palette provider (exposes `useTheme()`)
+- `components/ui/PaletteSwitcher.jsx` — quick palette switcher UI
 - `utils/storage.js` — AsyncStorage helpers (food & meal persistence)
+
+Dependency compatibility note
+- Metro and Expo will warn if installed packages don't match the expected Expo SDK versions; mismatched native packages (react-native, react-native-reanimated, expo-router, etc.) can cause Expo Go to fail. If you rely on updated native modules, consider building a custom dev client (EAS) or align package versions with the Expo SDK.
+
+Troubleshooting
+- "Failed to download remote update" / "Something went wrong" in Expo Go:
+	- Use `npx expo start --tunnel -c` to avoid local network/firewall issues.
+	- If using USB Android debugging: run `adb reverse tcp:8081 tcp:8081`.
+	- Ensure the Metro server prints `Metro waiting on exp://...` and that your phone can access that host/port.
+
+- Metro start crashes with ENOENT referencing `node_modules/@emnapi/core/dist`:
+	- Run `npm install @emnapi/core` and then `npx expo start -c`.
+	- If `npm install` fails during postinstall on newer Node versions, switch to Node 18.x (recommended) and reinstall.
+
+- Dependency alignment: to avoid runtime mismatch with Expo Go, either:
+	1. Align package versions with Expo's recommended versions (upgrade/downgrade in `package.json`), then `npm install`; OR
+	2. Create a custom development client with EAS (`eas build --profile development`) and run with `expo start --dev-client`.
 
 Guidelines for pushing
 - Initialize a git repo (if not already):
@@ -51,7 +75,8 @@ git init
 git add .
 git commit -m "Initial import of diet-tracker-app"
 ```
-- Create the remote repo on GitHub (recommended name: `diet-tracker-app`) and push:
+
+- Push to a remote repository:
 
 ```powershell
 git remote add origin <your-repo-url>
@@ -59,6 +84,4 @@ git branch -M main
 git push -u origin main
 ```
 
-Troubleshooting notes
-- If you see a warning like "[Layout children]: Too many screens defined. Route 'food-db' is extraneous", ensure a matching filesystem route file exists in the `app` tree (e.g., `app/(tabs)/food-db.jsx`) or remove the manual `Tabs.Screen` entry.
-- If screens import functions that don't exist (for example `getFoodList` vs `getFoodDatabase`), the app will crash when modules are imported — keep exports and imports consistent.
+If you'd like, I can also add a short CONTRIBUTING.md and a development checklist (recommended Node version, expo commands, and how to create a dev client).
