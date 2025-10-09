@@ -5,12 +5,15 @@ A comprehensive calorie & meal tracker built with Expo + React Native (Expo Rout
 ## � Recent Updates & Bug Fixes
 
 ### Latest Fixes (October 2025)
-- ✅ **Metro Bundler Issues Resolved**: Fixed critical runtime errors causing app crashes
 - ✅ **SVG Import Fixes**: Resolved missing react-native-svg component imports in DailyNutritionSummary
 - ✅ **Import System Cleanup**: Converted dynamic require() statements to proper ES6 imports
 - ✅ **Supabase Integration**: Standardized data field mappings for consistent database operations
 - ✅ **Web Compatibility**: Enhanced React Native Web support with proper component imports
 - ✅ **Error Handling**: Improved error boundaries and user feedback systems
+- ⚠️ **Metro Bundler Logs**: `<anonymous>` file errors persist but don't affect functionality
+
+### 📋 Complete Documentation
+**See [DOCUMENTATION.md](./DOCUMENTATION.md) for comprehensive project details including architecture, API references, database schema, and development workflows.**
 
 ## 🚀 Major Enhancement Categories
 
@@ -250,10 +253,13 @@ utils/
 
 ### Common Issues & Solutions
 
-#### Metro Bundler Issues (Recently Fixed)
-- **ENOENT `<anonymous>` file errors**: These have been resolved through proper import system cleanup
-- **Missing SVG components**: Fixed by adding proper `react-native-svg` imports
-- **Dynamic require() errors**: Converted to ES6 imports for better compatibility
+#### Metro Bundler Issues
+- **ENOENT `<anonymous>` file errors**: ⚠️ Ongoing issue - App functions normally but shows repeated error logs
+  - These errors don't affect app functionality
+  - Related to Metro's source mapping system during development
+  - Use `npx expo start -c` to clear cache if needed
+- **Missing SVG components**: ✅ Fixed by adding proper `react-native-svg` imports
+- **Dynamic require() errors**: ✅ Converted to ES6 imports for better compatibility
 
 #### Expo Go Connection Issues  
 - **"Failed to download remote update"**: Use `npx expo start --tunnel -c` to avoid network issues
@@ -312,4 +318,17 @@ npx expo start --web
 
 ## 📚 Additional Resources
 
-For contributing guidelines, advanced setup instructions, or custom development client creation, refer to the Expo documentation or create additional documentation files as needed.
+### Complete Project Documentation
+For comprehensive project information, see **[DOCUMENTATION.md](./DOCUMENTATION.md)** which includes:
+- **Detailed Architecture**: Complete technical implementation details
+- **Component Documentation**: API references for all components
+- **Database Schema**: Full data structure documentation
+- **Development Workflow**: Detailed development and deployment processes
+- **Future Roadmap**: Planned enhancements and feature additions
+- **Troubleshooting Guide**: Extended issue resolution strategies
+
+### External Resources
+- **Expo Documentation**: [docs.expo.dev](https://docs.expo.dev)
+- **React Native Guide**: [reactnative.dev](https://reactnative.dev)
+- **Supabase Documentation**: [supabase.com/docs](https://supabase.com/docs)
+- **React Native Chart Kit**: [github.com/indiespirit/react-native-chart-kit](https://github.com/indiespirit/react-native-chart-kit)
