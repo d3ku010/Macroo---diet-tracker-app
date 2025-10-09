@@ -1,13 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import PrimaryButton from '../../components/ui/PrimaryButton';
 import { useTheme } from '../../components/ui/ThemeProvider';
-import { deleteFood, getFoodList, saveFoodToDatabase, updateFood } from '../../utils/storage';
+import { deleteFoodFromDatabase, getFoodDatabase, saveFoodToDatabase, updateFoodInDatabase } from '../../utils/supabaseStorage';
 import { toast } from '../../utils/toast';
 
 export default function FoodDbScreen() {
     const { theme } = useTheme();
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
     const [foods, setFoods] = useState([]);
     const [newFood, setNewFood] = useState('');
     const [newCalories, setNewCalories] = useState('');
@@ -24,13 +26,22 @@ export default function FoodDbScreen() {
     const [editFat, setEditFat] = useState('');
 
     const load = async () => {
-        const data = await getFoodList();
+        const data = await getFoodDatabase();
         setFoods(data || []);
     };
 
     useEffect(() => {
         load();
     }, []);
+
+    // Refresh data when screen comes into focus
+    useFocusEffect(
+        React.useCallback(() => {
+            console.log('Food DB screen focused, refreshing data...');
+            load();
+            setRefreshTrigger(prev => prev + 1);
+        }, [])
+    );
 
     const handleAddFood = async () => {
         if (!newFood || !newCalories || !newProtein || !newCarbs || !newFat) {
@@ -75,7 +86,7 @@ export default function FoodDbScreen() {
             carbs: parseFloat(editCarbs) || editingFood.carbs,
             fat: parseFloat(editFat) || editingFood.fat,
         };
-        await updateFood(editingFood.name, updated);
+        await updateFoodInDatabase(editingFood.id, updated);
         setEditModalVisible(false);
         setEditingFood(null);
         await load();
@@ -123,7 +134,8 @@ export default function FoodDbScreen() {
                                     <Ionicons name="pencil" size={18} color={theme.primary} />
                                 </TouchableOpacity>
                                 <TouchableOpacity onPress={async () => {
-                                    const removed = await deleteFood(f.name);
+                                    const removed = f; // Store the food data for undo
+                                    await deleteFoodFromDatabase(f.id);
                                     await load();
                                     toast({ message: 'Food deleted', type: 'error', action: { label: 'Undo', onPress: async () => { if (removed) { await saveFoodToDatabase(removed); await load(); toast('Restored', 'success'); } } } });
                                 }} style={{ padding: 6 }} accessibilityLabel="Delete food">

@@ -37,9 +37,17 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         alignItems: 'center',
         justifyContent: 'center',
-        flexDirection: 'row'
+        flexDirection: 'row',
+        cursor: Platform.OS === 'web' ? 'pointer' : 'default',
+        userSelect: Platform.OS === 'web' ? 'none' : 'auto',
     },
     // don't hardcode color here; textColor is applied inline based on theme
-    text: { fontWeight: '700' },
-    disabled: { opacity: 0.6 },
+    text: {
+        fontWeight: '700',
+        userSelect: Platform.OS === 'web' ? 'none' : 'auto',
+    },
+    disabled: {
+        opacity: 0.6,
+        cursor: Platform.OS === 'web' ? 'not-allowed' : 'default',
+    },
 });

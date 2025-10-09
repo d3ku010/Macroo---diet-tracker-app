@@ -4,7 +4,7 @@ import { Animated, Dimensions, Modal, Platform, ScrollView, StyleSheet, Text, Te
 import { LineChart } from 'react-native-chart-kit';
 import SegmentedControl from '../../components/ui/SegmentedControl';
 import { useTheme } from '../../components/ui/ThemeProvider';
-import { getMeals } from '../../utils/storage';
+import { getMeals } from '../../utils/supabaseStorage';
 let DateTimePicker = null;
 try {
     // optional dependency - use if available
@@ -32,11 +32,11 @@ export default function MonthlyScreen() {
 
         // DAILY totals for selectedDate
         const dayStr = selectedDate.toISOString().slice(0, 10);
-        const dayMeals = entries.filter(m => m.timestamp?.startsWith(dayStr));
-        const sumCal = Math.round(dayMeals.reduce((s, m) => s + (m.nutrients?.calories || 0), 0));
-        const sumP = Math.round(dayMeals.reduce((s, m) => s + (m.nutrients?.protein || 0), 0));
-        const sumC = Math.round(dayMeals.reduce((s, m) => s + (m.nutrients?.carbs || 0), 0));
-        const sumF = Math.round(dayMeals.reduce((s, m) => s + (m.nutrients?.fat || 0), 0));
+        const dayMeals = entries.filter(m => m.date === dayStr);
+        const sumCal = Math.round(dayMeals.reduce((s, m) => s + (m.calories || 0), 0));
+        const sumP = Math.round(dayMeals.reduce((s, m) => s + (m.protein || 0), 0));
+        const sumC = Math.round(dayMeals.reduce((s, m) => s + (m.carbs || 0), 0));
+        const sumF = Math.round(dayMeals.reduce((s, m) => s + (m.fat || 0), 0));
         setDailyTotals({ calories: sumCal, protein: sumP, carbs: sumC, fat: sumF });
 
         // MONTHLY (last 30 days) chart build
@@ -49,11 +49,11 @@ export default function MonthlyScreen() {
             const d = new Date();
             d.setDate(d.getDate() - i);
             const dayKey = d.toISOString().slice(0, 10);
-            const dayMeals = entries.filter(m => m.timestamp?.startsWith(dayKey));
-            dataCalories.push(Math.round(dayMeals.reduce((s, m) => s + (m.nutrients?.calories || 0), 0)));
-            dataProtein.push(Math.round(dayMeals.reduce((s, m) => s + (m.nutrients?.protein || 0), 0)));
-            dataCarbs.push(Math.round(dayMeals.reduce((s, m) => s + (m.nutrients?.carbs || 0), 0)));
-            dataFat.push(Math.round(dayMeals.reduce((s, m) => s + (m.nutrients?.fat || 0), 0)));
+            const dayMeals = entries.filter(m => m.date === dayKey);
+            dataCalories.push(Math.round(dayMeals.reduce((s, m) => s + (m.calories || 0), 0)));
+            dataProtein.push(Math.round(dayMeals.reduce((s, m) => s + (m.protein || 0), 0)));
+            dataCarbs.push(Math.round(dayMeals.reduce((s, m) => s + (m.carbs || 0), 0)));
+            dataFat.push(Math.round(dayMeals.reduce((s, m) => s + (m.fat || 0), 0)));
             const dd = String(d.getDate()).padStart(2, '0');
             const mm = String(d.getMonth() + 1).padStart(2, '0');
             labels.push(i % 5 === 0 ? `${dd}/${mm}` : '');
@@ -119,56 +119,82 @@ export default function MonthlyScreen() {
         setSelectedDate(d);
     };
 
-    const mealsForSelected = meals.filter(m => m.timestamp?.startsWith(selectedDate.toISOString().slice(0, 10)));
+    const mealsForSelected = meals.filter(m => m.date === selectedDate.toISOString().slice(0, 10));
     const [dateModalVisible, setDateModalVisible] = useState(false);
     const [dateInput, setDateInput] = useState(selectedDate.toISOString().slice(0, 10));
 
     return (
         <ScrollView style={[styles.container, { backgroundColor: theme.background }]} contentContainerStyle={{ paddingBottom: 140 }}>
-            <Text style={[styles.heading, { color: theme.text }]}>Monthly & Daily</Text>
+            <Text style={[styles.heading, { color: theme.text }]}>📊 Nutrition History</Text>
 
-            {/* Daily section */}
-            <View style={[styles.card, { backgroundColor: theme.card }]}>
-                <Text style={{ fontWeight: '700', marginBottom: 8, color: theme.text }}>Daily</Text>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <View>
-                        <TouchableOpacity onPress={() => setDateModalVisible(true)} style={{ padding: 6 }}>
-                            <Text style={{ fontWeight: '700', color: theme.text }}>{selectedDate.toDateString()}</Text>
-                        </TouchableOpacity>
-                        <Text style={{ color: theme.subText, fontSize: 12 }}>Tap to select a date</Text>
+            {/* Date Selection Card */}
+            <View style={[styles.card, { backgroundColor: theme.card, shadowColor: theme.muted }]}>
+                <View style={styles.cardHeader}>
+                    <Text style={[styles.cardTitle, { color: theme.text }]}>📅 Selected Date</Text>
+                </View>
+
+                <TouchableOpacity
+                    onPress={() => setDateModalVisible(true)}
+                    style={[styles.dateSelector, { backgroundColor: theme.background, borderColor: theme.primary, cursor: Platform.OS === 'web' ? 'pointer' : 'default' }]}
+                >
+                    <Text style={[styles.selectedDateText, { color: theme.text }]}>
+                        {selectedDate.toLocaleDateString('en-US', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                        })}
+                    </Text>
+                    <Text style={[styles.tapHint, { color: theme.subText }]}>Tap to change date</Text>
+                </TouchableOpacity>
+
+                <View style={styles.dateNavigation}>
+                    <TouchableOpacity onPress={prevDay} style={[styles.navButton, { backgroundColor: theme.background, borderColor: theme.primary }]}>
+                        <Text style={[styles.navButtonText, { color: theme.primary }]}>← Previous</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={nextDay} style={[styles.navButton, { backgroundColor: theme.background, borderColor: theme.primary }]}>
+                        <Text style={[styles.navButtonText, { color: theme.primary }]}>Next →</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+
+            {/* Daily Stats Card */}
+            <View style={[styles.card, { backgroundColor: theme.card, shadowColor: theme.muted }]}>
+                <View style={styles.cardHeader}>
+                    <Text style={[styles.cardTitle, { color: theme.text }]}>📈 Daily Summary</Text>
+                </View>
+
+                <View style={styles.statsGrid}>
+                    <View style={[styles.statCard, { backgroundColor: theme.background }]}>
+                        <Text style={[styles.statLabel, { color: theme.subText }]}>🔥 Calories</Text>
+                        <Text style={[styles.statValue, { color: theme.danger }]}>{dailyTotals.calories}</Text>
+                        <Text style={[styles.statUnit, { color: theme.subText }]}>kcal</Text>
                     </View>
-                    <View style={{ flexDirection: 'row', gap: 8 }}>
-                        <TouchableOpacity onPress={prevDay} style={[styles.navBtn, { borderColor: theme.muted }]}><Text style={{ color: theme.primary }}>Prev</Text></TouchableOpacity>
-                        <TouchableOpacity onPress={nextDay} style={[styles.navBtn, { borderColor: theme.muted }]}><Text style={{ color: theme.primary }}>Next</Text></TouchableOpacity>
+                    <View style={[styles.statCard, { backgroundColor: theme.background }]}>
+                        <Text style={[styles.statLabel, { color: theme.subText }]}>💪 Protein</Text>
+                        <Text style={[styles.statValue, { color: theme.success }]}>{dailyTotals.protein}</Text>
+                        <Text style={[styles.statUnit, { color: theme.subText }]}>g</Text>
+                    </View>
+                    <View style={[styles.statCard, { backgroundColor: theme.background }]}>
+                        <Text style={[styles.statLabel, { color: theme.subText }]}>🍞 Carbs</Text>
+                        <Text style={[styles.statValue, { color: theme.primary }]}>{dailyTotals.carbs}</Text>
+                        <Text style={[styles.statUnit, { color: theme.subText }]}>g</Text>
+                    </View>
+                    <View style={[styles.statCard, { backgroundColor: theme.background }]}>
+                        <Text style={[styles.statLabel, { color: theme.subText }]}>🥑 Fat</Text>
+                        <Text style={[styles.statValue, { color: theme.fat }]}>{dailyTotals.fat}</Text>
+                        <Text style={[styles.statUnit, { color: theme.subText }]}>g</Text>
                     </View>
                 </View>
 
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
-                    <View style={{ flex: 1, padding: 8, borderRadius: 10, backgroundColor: theme.background }}>
-                        <Text style={{ fontSize: 12, color: theme.subText }}>Calories</Text>
-                        <Text style={{ fontWeight: '800', fontSize: 18, color: theme.danger }}>{dailyTotals.calories} kcal</Text>
-                    </View>
-                    <View style={{ flex: 1, padding: 8, borderRadius: 10, backgroundColor: theme.background }}>
-                        <Text style={{ fontSize: 12, color: theme.subText }}>Protein</Text>
-                        <Text style={{ fontWeight: '800', fontSize: 18, color: theme.success }}>{dailyTotals.protein} g</Text>
-                    </View>
-                    <View style={{ flex: 1, padding: 8, borderRadius: 10, backgroundColor: theme.background }}>
-                        <Text style={{ fontSize: 12, color: theme.subText }}>Carbs</Text>
-                        <Text style={{ fontWeight: '800', fontSize: 18, color: theme.primary }}>{dailyTotals.carbs} g</Text>
-                    </View>
-                    <View style={{ flex: 1, padding: 8, borderRadius: 10, backgroundColor: theme.background }}>
-                        <Text style={{ fontSize: 12, color: theme.subText }}>Fat</Text>
-                        <Text style={{ fontWeight: '800', fontSize: 18, color: theme.fat }}>{dailyTotals.fat} g</Text>
-                    </View>
-                </View>
-
-                <View style={{ marginTop: 12 }}>
-                    <Text style={{ color: theme.subText }}>Entries for this day</Text>
+                {/* Daily Meals Section */}
+                <View style={styles.dailyMealsSection}>
+                    <Text style={[styles.sectionTitle, { color: theme.text }]}>🍽️ Daily Meals</Text>
                     {mealsForSelected.length === 0 ? <Text style={{ marginTop: 8, color: theme.subText }}>No meals for this day.</Text> : (
                         mealsForSelected.map((m, i) => (
                             <View key={i} style={{ marginTop: 8 }}>
-                                <Text style={{ fontWeight: '700', color: theme.text }}>{m.type} • {m.food}</Text>
-                                <Text style={{ color: theme.text }}>{(m.nutrients?.calories || 0).toFixed(1)} kcal</Text>
+                                <Text style={{ fontWeight: '700', color: theme.text }}>{m.mealType} • {m.foodName}</Text>
+                                <Text style={{ color: theme.text }}>{(m.calories || 0).toFixed(1)} kcal</Text>
                             </View>
                         ))
                     )}
@@ -220,7 +246,7 @@ export default function MonthlyScreen() {
                             <View>
                                 <TextInput value={dateInput} onChangeText={setDateInput} placeholder="YYYY-MM-DD" placeholderTextColor={theme.subText} style={{ borderWidth: 1, borderColor: theme.muted, padding: 10, borderRadius: 8, marginBottom: 8, color: theme.text, backgroundColor: theme.card }} />
                                 <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
-                                    <TouchableOpacity onPress={() => setDateModalVisible(false)} style={{ padding: 8 }}><Text style={{ color: theme.subText }}>Cancel</Text></TouchableOpacity>
+                                    <TouchableOpacity onPress={() => setDateModalVisible(false)} style={{ padding: 8, cursor: Platform.OS === 'web' ? 'pointer' : 'default' }}><Text style={{ color: theme.subText }}>Cancel</Text></TouchableOpacity>
                                     <TouchableOpacity onPress={() => {
                                         const d = new Date(dateInput);
                                         if (!isNaN(d)) {
@@ -230,7 +256,7 @@ export default function MonthlyScreen() {
                                         } else {
                                             setDateInput(selectedDate.toISOString().slice(0, 10));
                                         }
-                                    }} style={{ padding: 8 }}><Text style={{ color: theme.primary }}>Go</Text></TouchableOpacity>
+                                    }} style={{ padding: 8, cursor: Platform.OS === 'web' ? 'pointer' : 'default' }}><Text style={{ color: theme.primary }}>Go</Text></TouchableOpacity>
                                 </View>
                             </View>
                         )}
@@ -272,12 +298,108 @@ export default function MonthlyScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, padding: 16 },
-    heading: { fontSize: 16, fontWeight: '700', marginBottom: 12 },
-    card: { padding: 14, borderRadius: 12 },
+    heading: { fontSize: 22, fontWeight: '800', marginBottom: 16, textAlign: 'center' },
+    card: {
+        padding: 16,
+        borderRadius: 16,
+        marginBottom: 16,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3
+    },
+    cardHeader: {
+        marginBottom: 12,
+    },
+    cardTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+    },
+    dateSelector: {
+        padding: 16,
+        borderRadius: 12,
+        borderWidth: 1,
+        marginBottom: 12,
+        alignItems: 'center',
+    },
+    selectedDateText: {
+        fontSize: 16,
+        fontWeight: '600',
+        marginBottom: 4,
+    },
+    tapHint: {
+        fontSize: 12,
+    },
+    dateNavigation: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 12,
+    },
+    navButton: {
+        flex: 1,
+        padding: 12,
+        borderRadius: 8,
+        borderWidth: 1,
+        alignItems: 'center',
+    },
+    navButtonText: {
+        fontWeight: '600',
+    },
+    statsGrid: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 8,
+        marginBottom: 16,
+    },
+    statCard: {
+        flex: 1,
+        padding: 12,
+        borderRadius: 10,
+        alignItems: 'center',
+    },
+    statLabel: {
+        fontSize: 12,
+        marginBottom: 4,
+    },
+    statValue: {
+        fontWeight: '800',
+        fontSize: 20,
+    },
+    statUnit: {
+        fontSize: 10,
+        marginTop: 2,
+    },
+    dailyMealsSection: {
+        marginTop: 8,
+    },
+    sectionTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        marginBottom: 8,
+    },
     chartCard: { padding: 12, borderRadius: 12, alignItems: 'center', marginTop: 8 },
-    pill: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, minWidth: 64, alignItems: 'center' },
+    pill: {
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 999,
+        minWidth: 64,
+        alignItems: 'center',
+        cursor: Platform.OS === 'web' ? 'pointer' : 'default',
+    },
     pillActive: {},
-    pillText: { fontWeight: '700' },
-    pillTextActive: { fontWeight: '700' },
-    navBtn: { borderWidth: 1, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }
+    pillText: {
+        fontWeight: '700',
+        userSelect: Platform.OS === 'web' ? 'none' : 'auto',
+    },
+    pillTextActive: {
+        fontWeight: '700',
+        userSelect: Platform.OS === 'web' ? 'none' : 'auto',
+    },
+    navBtn: {
+        borderWidth: 1,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
+        cursor: Platform.OS === 'web' ? 'pointer' : 'default',
+    }
 });

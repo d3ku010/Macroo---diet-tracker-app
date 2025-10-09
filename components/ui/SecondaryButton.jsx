@@ -34,10 +34,16 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         alignItems: 'center',
         flexDirection: 'row',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        cursor: Platform.OS === 'web' ? 'pointer' : 'default',
+        userSelect: Platform.OS === 'web' ? 'none' : 'auto',
     },
     text: {
-        fontWeight: '700'
+        fontWeight: '700',
+        userSelect: Platform.OS === 'web' ? 'none' : 'auto',
     },
-    disabled: { opacity: 0.6 },
+    disabled: {
+        opacity: 0.6,
+        cursor: Platform.OS === 'web' ? 'not-allowed' : 'default',
+    },
 });

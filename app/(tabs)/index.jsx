@@ -1,12 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Animated, Dimensions, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, Dimensions, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import MacroRatioPieChart from '../../components/charts/MacroRatioPieChart';
+import { MultiProgressRing, ProgressRing } from '../../components/charts/ProgressRing';
+import DailyNutritionSummary from '../../components/DailyNutritionSummary';
 import HydrationProgress from '../../components/HydrationProgress';
 import PaletteSwitcher from '../../components/ui/PaletteSwitcher';
 import PrimaryButton from '../../components/ui/PrimaryButton';
 import { useTheme } from '../../components/ui/ThemeProvider';
-import { deleteMeal, getMeals, getProfile, getWaterEntries, suggestCalories, updateMeal } from '../../utils/storage';
+import { checkMealAchievements, initializeAchievements } from '../../utils/achievements';
+import { generateNutritionInsights } from '../../utils/recommendations';
+import { getCustomMacroTargets, suggestCalories } from '../../utils/storage';
+import { deleteMeal, getMeals, getProfile, getWaterEntries, updateMeal } from '../../utils/supabaseStorage';
 import { toast } from '../../utils/toast';
 
 const screenWidth = Dimensions.get('window').width;
@@ -23,41 +29,60 @@ export default function HomeScreen() {
   const [recommendedCal, setRecommendedCal] = useState(null);
   const [todayWater, setTodayWater] = useState(0);
   const [profileGoal, setProfileGoal] = useState(2000);
+  const [customTargets, setCustomTargets] = useState(null);
+  const [nutritionInsights, setNutritionInsights] = useState([]);
+  const [showInsights, setShowInsights] = useState(false);
 
   const loadMeals = async () => {
-    const data = await getMeals();
     const today = new Date().toISOString().slice(0, 10);
-    const filtered = data.filter(m => m.timestamp?.startsWith(today));
+    const filtered = await getMeals(today); // Get only today's meals
 
     const sum = filtered.reduce(
       (acc, m) => ({
-        calories: acc.calories + (m.nutrients?.calories || 0),
-        protein: acc.protein + (m.nutrients?.protein || 0),
-        carbs: acc.carbs + (m.nutrients?.carbs || 0),
-        fat: acc.fat + (m.nutrients?.fat || 0),
+        calories: acc.calories + (m.calories || 0),
+        protein: acc.protein + (m.protein || 0),
+        carbs: acc.carbs + (m.carbs || 0),
+        fat: acc.fat + (m.fat || 0),
       }),
       { calories: 0, protein: 0, carbs: 0, fat: 0 }
     );
 
     setTodayMeals(filtered);
     setTotals(sum);
+
+    // Initialize achievements system
+    await initializeAchievements();
+
+    // Check achievements
+    await checkMealAchievements(filtered);
+
     // compute today's water total
     const waters = await getWaterEntries();
     const todayDate = new Date().toISOString().slice(0, 10);
     const todaySum = (waters || [])
-      .filter(w => w.timestamp?.startsWith(todayDate))
+      .filter(w => w.date === todayDate)
       .reduce((s, w) => s + (w.amount || 0), 0);
     setTodayWater(todaySum);
+
     const prof = await getProfile();
     if (prof?.dailyWaterGoalMl) setProfileGoal(prof.dailyWaterGoalMl);
+
+    // Get custom targets or calculate defaults
+    const customTargets = await getCustomMacroTargets();
+    setCustomTargets(customTargets);
+
     const rec = suggestCalories(prof);
     if (rec) setRecommendedCal(rec);
+
+    // Generate nutrition insights
+    const insights = await generateNutritionInsights();
+    setNutritionInsights(insights);
   };
 
-  const handleDeleteMeal = async (ts) => {
-    const removed = await deleteMeal(ts);
+  const handleDeleteMeal = async (mealId) => {
+    const removed = await deleteMeal(mealId);
     await loadMeals();
-    toast({ message: 'Meal deleted', type: 'error', action: { label: 'Undo', onPress: async () => { if (removed) { const { saveMealEntry } = require('../../utils/storage'); await saveMealEntry(removed); await loadMeals(); toast('Restored meal', 'success'); } } } });
+    toast({ message: 'Meal deleted', type: 'error', action: { label: 'Undo', onPress: async () => { if (removed) { await saveMeal(removed); await loadMeals(); toast('Restored meal', 'success'); } } } });
   };
 
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -73,12 +98,11 @@ export default function HomeScreen() {
   const handleSaveMealEdit = async () => {
     if (!editingMeal) return;
     const updated = { quantity: parseFloat(editQuantity) || editingMeal.quantity };
-    await updateMeal(editingMeal.timestamp, updated);
+    await updateMeal(editingMeal.id, updated);
     setEditModalVisible(false);
     setEditingMeal(null);
     await loadMeals();
-    // reuse toast
-    const { showToast } = require('../../components/ui/Toast');
+    toast('Meal updated successfully!', 'success');
   };
 
   useFocusEffect(
@@ -120,32 +144,108 @@ export default function HomeScreen() {
         </View>
       </View>
 
+      {/* MyFitnessPal-Style Daily Summary */}
+      <DailyNutritionSummary
+        userId="current_user"
+        date={new Date().toISOString().slice(0, 10)}
+      />
+
       <View style={[styles.summaryCard, { backgroundColor: theme.card, shadowColor: theme.muted }]}>
-        <View style={{ width: '100%', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.caloriesLabel, { color: theme.subText }]}>Calories</Text>
-            <Text style={[styles.caloriesText, { color: theme.primary, textAlign: 'left' }]}>{totals.calories.toFixed(0)} kcal</Text>
-          </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            {recommendedCal ? (
-              <Text style={[styles.calorieSub, { color: theme.subText }]}>{`${totals.calories.toFixed(0)} / ${recommendedCal} kcal`}</Text>
-            ) : null}
-            {recommendedCal ? (
-              <View style={styles.inlinePct}>
-                <Text style={styles.inlinePctText}>{Math.round((totals.calories / recommendedCal) * 100)}%</Text>
-              </View>
-            ) : null}
-          </View>
+        {/* Progress Rings Section */}
+        <View style={styles.progressSection}>
+          {recommendedCal && (
+            <ProgressRing
+              current={totals.calories}
+              target={recommendedCal}
+              size={100}
+              label="Calories"
+              unit="kcal"
+              color={theme.danger}
+            />
+          )}
+
+          {/* Multi-progress ring for macros */}
+          <MultiProgressRing
+            size={120}
+            metrics={[
+              {
+                label: 'Protein',
+                current: totals.protein,
+                target: customTargets?.protein || (recommendedCal ? Math.round(recommendedCal * 0.25 / 4) : 125),
+                color: theme.success,
+              },
+              {
+                label: 'Carbs',
+                current: totals.carbs,
+                target: customTargets?.carbs || (recommendedCal ? Math.round(recommendedCal * 0.45 / 4) : 225),
+                color: theme.primary,
+              },
+              {
+                label: 'Fat',
+                current: totals.fat,
+                target: customTargets?.fat || (recommendedCal ? Math.round(recommendedCal * 0.30 / 9) : 67),
+                color: theme.fat,
+              },
+            ]}
+          />
         </View>
-        <View style={[styles.nutrientsRow, { marginTop: 12 }]}>
-          <View style={styles.macroItem}><Text style={[styles.macroLabel, { color: theme.subText }]}>Protein</Text><Text style={[styles.macroValue, { color: theme.success }]}>{totals.protein.toFixed(1)} g</Text></View>
-          <View style={styles.macroItem}><Text style={[styles.macroLabel, { color: theme.subText }]}>Carbs</Text><Text style={[styles.macroValue, { color: theme.primary }]}>{totals.carbs.toFixed(1)} g</Text></View>
-          <View style={styles.macroItem}><Text style={[styles.macroLabel, { color: theme.subText }]}>Fat</Text><Text style={[styles.macroValue, { color: theme.fat }]}>{totals.fat.toFixed(1)} g</Text></View>
-        </View>
+
+        {/* Macro Pie Chart */}
+        <MacroRatioPieChart
+          protein={totals.protein}
+          carbs={totals.carbs}
+          fat={totals.fat}
+          size="small"
+          showLegend={false}
+        />
+
+        {/* Hydration Progress */}
         <View style={{ width: '100%', marginTop: 12 }}>
           <HydrationProgress currentMl={todayWater} goalMl={profileGoal} />
         </View>
 
+        {/* Nutrition Insights */}
+        {nutritionInsights.length > 0 && (
+          <TouchableOpacity
+            style={styles.insightsToggle}
+            onPress={() => setShowInsights(!showInsights)}
+          >
+            <Ionicons
+              name={showInsights ? 'chevron-up' : 'bulb-outline'}
+              size={16}
+              color={theme.primary}
+            />
+            <Text style={[styles.insightsText, { color: theme.primary }]}>
+              {showInsights ? 'Hide Insights' : `${nutritionInsights.length} Nutrition Insights`}
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {showInsights && (
+          <View style={styles.insightsContainer}>
+            {nutritionInsights.slice(0, 3).map((insight, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.insightItem,
+                  {
+                    backgroundColor: insight.type === 'warning' ? theme.danger + '20' : theme.primary + '20',
+                    borderColor: insight.type === 'warning' ? theme.danger : theme.primary,
+                  }
+                ]}
+              >
+                <Ionicons
+                  name={insight.type === 'warning' ? 'warning-outline' : 'information-circle-outline'}
+                  size={16}
+                  color={insight.type === 'warning' ? theme.danger : theme.primary}
+                />
+                <Text style={[styles.insightText, { color: theme.text }]}>
+                  {insight.message}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
       </View>
 
       <Text style={[styles.heading, { color: theme.text }]}>Meals Logged Today</Text>
@@ -154,7 +254,7 @@ export default function HomeScreen() {
           <Text style={{ color: theme.subText }}>No meals logged today.</Text>
         ) : (
           todayMeals.map((meal) => (
-            <View key={meal.timestamp} style={styles.mealItem}>
+            <View key={meal.id} style={styles.mealItem}>
               <View style={styles.mealHeaderTop}>
                 <View style={styles.mealTitleLeft}>
                   <View style={styles.mealTitleRow}>
@@ -170,7 +270,7 @@ export default function HomeScreen() {
                     <TouchableOpacity onPress={() => openEditMeal(meal)} style={styles.iconButton} accessibilityLabel="Edit meal">
                       <Ionicons name="pencil" size={18} color={theme.primary} />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => handleDeleteMeal(meal.timestamp)} style={[styles.iconButton, { marginLeft: 8 }]} accessibilityLabel="Delete meal">
+                    <TouchableOpacity onPress={() => handleDeleteMeal(meal.id)} style={[styles.iconButton, { marginLeft: 8 }]} accessibilityLabel="Delete meal">
                       <Ionicons name="trash" size={18} color={theme.danger} />
                     </TouchableOpacity>
                   </View>
@@ -181,7 +281,7 @@ export default function HomeScreen() {
                 <Text style={[styles.macroText, { color: theme.subText }]}>P {(meal.nutrients?.protein || 0).toFixed(1)}g</Text>
                 <Text style={[styles.macroText, { color: theme.subText }]}>C {(meal.nutrients?.carbs || 0).toFixed(1)}g</Text>
                 <Text style={[styles.macroText, { color: theme.subText }]}>F {(meal.nutrients?.fat || 0).toFixed(1)}g</Text>
-                <Text style={[styles.macroTime, { color: theme.subText }]}>{new Date(meal.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+                <Text style={[styles.macroTime, { color: theme.subText }]}>{meal.mealType || 'Meal'}</Text>
               </View>
             </View>
           ))
@@ -269,7 +369,11 @@ const styles = StyleSheet.create({
   mealTitle: { fontWeight: '700', fontSize: 16 },
   mealMeta: { marginTop: 6, fontSize: 13 },
   actionsRow: { flexDirection: 'row', alignItems: 'center' },
-  iconButton: { padding: 6, borderRadius: 8 },
+  iconButton: {
+    padding: 6,
+    borderRadius: 8,
+    cursor: Platform.OS === 'web' ? 'pointer' : 'default',
+  },
   macroRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 },
   macroText: { fontSize: 13 },
   macroTime: { fontSize: 12, marginLeft: 8 },
@@ -280,4 +384,40 @@ const styles = StyleSheet.create({
   mealRightTop: { alignItems: 'flex-end' },
   mealQty: { fontWeight: '700' },
   macroRowCompact: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
+  progressSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  insightsToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    padding: 8,
+    cursor: Platform.OS === 'web' ? 'pointer' : 'default',
+  },
+  insightsText: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  insightsContainer: {
+    marginTop: 8,
+  },
+  insightItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    marginBottom: 4,
+  },
+  insightText: {
+    fontSize: 11,
+    flex: 1,
+    marginLeft: 6,
+    lineHeight: 14,
+  },
 });
