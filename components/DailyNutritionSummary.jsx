@@ -3,6 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
+import { getMeals, getProfile } from '../utils/supabaseStorage';
 import { useTheme } from './ui/ThemeProvider';
 
 const { width } = Dimensions.get('window');
@@ -28,13 +29,11 @@ const DailyNutritionSummary = ({ userId, date }) => {
     const loadDailyNutrition = async () => {
         // Implementation to calculate daily nutrition from meals
         try {
-            const meals = await getMeals();
+            const meals = await getMeals(date); // Pass date to get only meals for that date
             const profile = await getProfile();
 
-            // Filter meals for the specific date
-            const todaysMeals = meals.filter(meal =>
-                meal.date === date
-            );
+            // Use all meals since we already filtered by date
+            const todaysMeals = meals;
 
             // Calculate totals (nutrition is already calculated per meal in Supabase format)
             const totals = todaysMeals.reduce((acc, meal) => {

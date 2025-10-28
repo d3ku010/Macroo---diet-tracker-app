@@ -1,11 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Animated, Dimensions, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, Dimensions, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import MacroRatioPieChart from '../../components/charts/MacroRatioPieChart';
 import { MultiProgressRing, ProgressRing } from '../../components/charts/ProgressRing';
 import DailyNutritionSummary from '../../components/DailyNutritionSummary';
 import HydrationProgress from '../../components/HydrationProgress';
+import ResponsiveCard from '../../components/layout/ResponsiveCard';
+import ResponsiveLayout from '../../components/layout/ResponsiveLayout';
 import PaletteSwitcher from '../../components/ui/PaletteSwitcher';
 import PrimaryButton from '../../components/ui/PrimaryButton';
 import { useTheme } from '../../components/ui/ThemeProvider';
@@ -131,7 +133,7 @@ export default function HomeScreen() {
   const scale = anim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.15] });
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.background }]} contentContainerStyle={{ paddingBottom: 140 }}>
+    <ResponsiveLayout>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <Text style={[styles.heading, { color: theme.text }]}>Today's Summary</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -150,14 +152,14 @@ export default function HomeScreen() {
         date={new Date().toISOString().slice(0, 10)}
       />
 
-      <View style={[styles.summaryCard, { backgroundColor: theme.card, shadowColor: theme.muted }]}>
+      <ResponsiveCard size="large">
         {/* Progress Rings Section */}
         <View style={styles.progressSection}>
           {recommendedCal && (
             <ProgressRing
               current={totals.calories}
               target={recommendedCal}
-              size={100}
+              size={screenWidth < 380 ? 80 : 100}
               label="Calories"
               unit="kcal"
               color={theme.danger}
@@ -166,7 +168,7 @@ export default function HomeScreen() {
 
           {/* Multi-progress ring for macros */}
           <MultiProgressRing
-            size={120}
+            size={screenWidth < 380 ? 100 : 120}
             metrics={[
               {
                 label: 'Protein',
@@ -246,26 +248,32 @@ export default function HomeScreen() {
             ))}
           </View>
         )}
-      </View>
+      </ResponsiveCard>
 
       <Text style={[styles.heading, { color: theme.text }]}>Meals Logged Today</Text>
       <View style={styles.mealsContainerSimple}>
         {todayMeals.length === 0 ? (
-          <Text style={{ color: theme.subText }}>No meals logged today.</Text>
+          <ResponsiveCard size="medium">
+            <Text style={{ color: theme.subText, textAlign: 'center' }}>No meals logged today.</Text>
+          </ResponsiveCard>
         ) : (
           todayMeals.map((meal) => (
-            <View key={meal.id} style={styles.mealItem}>
+            <ResponsiveCard key={meal.id} size="medium" style={{ marginBottom: 12 }}>
               <View style={styles.mealHeaderTop}>
                 <View style={styles.mealTitleLeft}>
                   <View style={styles.mealTitleRow}>
                     <View style={[styles.badge, { backgroundColor: theme.pillBg }]}>
                       <Text style={[styles.badgeText, { color: theme.text }]}>{meal.type}</Text>
                     </View>
-                    <Text style={[styles.mealTitle, { color: theme.text }]}>{meal.food}</Text>
+                    <Text style={[styles.mealTitle, { color: theme.text }]} numberOfLines={2}>
+                      {meal.food}
+                    </Text>
                   </View>
                 </View>
                 <View style={styles.mealRightTop}>
-                  <Text style={[styles.mealQty, { color: theme.text }]}>{meal.quantity} g • {(meal.nutrients?.calories || 0).toFixed(0)} kcal</Text>
+                  <Text style={[styles.mealQty, { color: theme.text }]} numberOfLines={1}>
+                    {meal.quantity} g • {(meal.nutrients?.calories || 0).toFixed(0)} kcal
+                  </Text>
                   <View style={{ flexDirection: 'row', marginTop: 6 }}>
                     <TouchableOpacity onPress={() => openEditMeal(meal)} style={styles.iconButton} accessibilityLabel="Edit meal">
                       <Ionicons name="pencil" size={18} color={theme.primary} />
@@ -283,7 +291,7 @@ export default function HomeScreen() {
                 <Text style={[styles.macroText, { color: theme.subText }]}>F {(meal.nutrients?.fat || 0).toFixed(1)}g</Text>
                 <Text style={[styles.macroTime, { color: theme.subText }]}>{meal.mealType || 'Meal'}</Text>
               </View>
-            </View>
+            </ResponsiveCard>
           ))
         )}
       </View>
@@ -300,22 +308,17 @@ export default function HomeScreen() {
           </View>
         </View>
       </Modal>
-    </ScrollView>
+    </ResponsiveLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  heading: { fontSize: 16, fontWeight: '700', marginBottom: 12 },
-  summaryCard: {
-    borderRadius: 14,
-    padding: 18,
-    alignItems: 'center',
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-    marginBottom: 12,
+  container: { flex: 1 },
+  heading: {
+    fontSize: screenWidth < 380 ? 18 : 20,
+    fontWeight: '700',
+    marginBottom: 16,
+    marginTop: 8
   },
   caloriesLabel: { fontSize: 12, fontWeight: '600' },
   caloriesText: {
@@ -363,10 +366,10 @@ const styles = StyleSheet.create({
   mealsContainerSimple: { marginBottom: 20 },
   mealHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   mealInfo: { flex: 1, paddingRight: 8 },
-  mealTitleRow: { flexDirection: 'row', alignItems: 'center' },
+  mealTitleRow: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginRight: 8 },
-  badgeText: { fontSize: 12, fontWeight: '700' },
-  mealTitle: { fontWeight: '700', fontSize: 16 },
+  badgeText: { fontSize: 11, fontWeight: '700' },
+  mealTitle: { fontWeight: '700', fontSize: screenWidth < 380 ? 14 : 16, flex: 1 },
   mealMeta: { marginTop: 6, fontSize: 13 },
   actionsRow: { flexDirection: 'row', alignItems: 'center' },
   iconButton: {
@@ -380,15 +383,16 @@ const styles = StyleSheet.create({
   inlinePct: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, marginLeft: 8 },
   inlinePctText: { fontWeight: '800' },
   mealHeaderTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  mealTitleLeft: { flex: 1, paddingRight: 8 },
-  mealRightTop: { alignItems: 'flex-end' },
-  mealQty: { fontWeight: '700' },
+  mealTitleLeft: { flex: 1, paddingRight: 12, minWidth: 0 },
+  mealRightTop: { alignItems: 'flex-end', flexShrink: 0 },
+  mealQty: { fontWeight: '700', fontSize: screenWidth < 380 ? 12 : 13 },
   macroRowCompact: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
   progressSection: {
-    flexDirection: 'row',
+    flexDirection: screenWidth < 380 ? 'column' : 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
     marginBottom: 16,
+    gap: screenWidth < 380 ? 12 : 0,
   },
   insightsToggle: {
     flexDirection: 'row',

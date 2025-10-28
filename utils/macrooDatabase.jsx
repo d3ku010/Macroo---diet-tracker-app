@@ -3,6 +3,10 @@ import { TABLES } from '../config/supabase';
 import supabase from './supabaseClient';
 
 class MacrooDatabase {
+    // Expose supabase client for migration scripts
+    get supabase() {
+        return supabase;
+    }
     // ==================== FOOD DATABASE OPERATIONS ====================
 
     /**
@@ -40,21 +44,33 @@ class MacrooDatabase {
      */
     async addFood(foodItem, userId = null) {
         try {
+            // Check if food already exists for this user
+            const existingFood = await supabase
+                .from(TABLES.FOODS)
+                .select('id')
+                .eq('name', foodItem.name)
+                .eq('user_id', userId)
+                .single();
+
+            if (existingFood.data) {
+                throw new Error(`Food "${foodItem.name}" already exists for this user`);
+            }
+
             const foodData = {
                 name: foodItem.name,
-                calories: foodItem.calories,
-                protein: foodItem.protein,
-                carbs: foodItem.carbs,
-                fat: foodItem.fat,
-                fiber: foodItem.fiber || 0,
-                sugar: foodItem.sugar || 0,
-                sodium: foodItem.sodium || 0,
+                calories: parseInt(foodItem.calories) || 0,
+                protein: parseFloat(foodItem.protein) || 0,
+                carbs: parseFloat(foodItem.carbs) || 0,
+                fat: parseFloat(foodItem.fat) || 0,
+                fiber: parseFloat(foodItem.fiber) || 0,
+                sugar: parseFloat(foodItem.sugar) || 0,
+                sodium: parseFloat(foodItem.sodium) || 0,
                 serving_size: foodItem.serving_size || '100g',
-                category: foodItem.category,
-                brand: foodItem.brand,
-                barcode: foodItem.barcode,
+                category: foodItem.category || 'other',
+                brand: foodItem.brand || null,
+                barcode: foodItem.barcode || null,
                 user_id: userId,
-                is_custom: true,
+                is_custom: userId ? true : false,
             };
 
             const { data, error } = await supabase
@@ -62,7 +78,12 @@ class MacrooDatabase {
                 .insert([foodData])
                 .select();
 
-            if (error) throw error;
+            if (error) {
+                if (error.code === '23505') { // Unique constraint violation
+                    throw new Error(`duplicate key value violates unique constraint: Food "${foodItem.name}" already exists`);
+                }
+                throw error;
+            }
             return data[0];
         } catch (error) {
             console.error('Error adding food:', error);
@@ -181,12 +202,31 @@ class MacrooDatabase {
      */
     async addMealEntry(mealEntry) {
         try {
+            // Validate meal entry data
+            const validMealTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
+            const cleanMealEntry = {
+                user_id: mealEntry.user_id,
+                food_id: mealEntry.food_id,
+                meal_type: validMealTypes.includes(mealEntry.meal_type) ? mealEntry.meal_type : 'snack',
+                quantity: parseFloat(mealEntry.quantity) || 1,
+                serving_size: mealEntry.serving_size || '100g',
+                date: mealEntry.date,
+                notes: mealEntry.notes || null,
+            };
+
             const { data, error } = await supabase
                 .from(TABLES.MEAL_ENTRIES)
-                .insert([mealEntry])
+                .insert([cleanMealEntry])
                 .select();
 
-            if (error) throw error;
+            if (error) {
+                if (error.code === '23503') { // Foreign key violation
+                    throw new Error(`Invalid user_id or food_id: ${error.message}`);
+                } else if (error.code === '23514') { // Check constraint violation
+                    throw new Error(`Invalid meal_type. Must be one of: ${validMealTypes.join(', ')}`);
+                }
+                throw error;
+            }
             return data[0];
         } catch (error) {
             console.error('Error adding meal entry:', error);
@@ -264,12 +304,30 @@ class MacrooDatabase {
      */
     async addWaterEntry(waterEntry) {
         try {
+            // Validate and clean water entry data
+            const cleanWaterEntry = {
+                user_id: waterEntry.user_id,
+                amount: parseInt(waterEntry.amount) || 250,
+                date: waterEntry.date,
+                time: waterEntry.time || new Date().toTimeString().split(' ')[0],
+            };
+
+            // Validate amount is positive
+            if (cleanWaterEntry.amount <= 0) {
+                cleanWaterEntry.amount = 250;
+            }
+
             const { data, error } = await supabase
                 .from(TABLES.WATER_ENTRIES)
-                .insert([waterEntry])
+                .insert([cleanWaterEntry])
                 .select();
 
-            if (error) throw error;
+            if (error) {
+                if (error.code === '23503') { // Foreign key violation
+                    throw new Error(`Invalid user_id: ${error.message}`);
+                }
+                throw error;
+            }
             return data[0];
         } catch (error) {
             console.error('Error adding water entry:', error);
@@ -335,41 +393,54 @@ class MacrooDatabase {
      */
     async saveUserProfile(userId, profileData) {
         try {
-            // Convert camelCase fields to snake_case for database
-            const dbProfileData = {
-                user_id: userId,
-                ...profileData
+            // Map activity levels to database constraints
+            const mapActivityLevel = (appLevel) => {
+                const mapping = {
+                    'sedentary': 'sedentary',
+                    'light': 'lightly_active',
+                    'moderate': 'moderately_active',
+                    'active': 'very_active',
+                    'very_active': 'extremely_active'
+                };
+                return mapping[appLevel] || 'lightly_active';
             };
 
-            // Handle camelCase to snake_case conversion
-            if (profileData.activityLevel) {
-                dbProfileData.activity_level = profileData.activityLevel;
-                delete dbProfileData.activityLevel;
-            }
-            if (profileData.dailyCaloriesTarget) {
-                dbProfileData.daily_calorie_target = profileData.dailyCaloriesTarget;
-                delete dbProfileData.dailyCaloriesTarget;
-            }
-            if (profileData.dailyProteinTarget) {
-                dbProfileData.daily_protein_target = profileData.dailyProteinTarget;
-                delete dbProfileData.dailyProteinTarget;
-            }
-            if (profileData.dailyCarbsTarget) {
-                dbProfileData.daily_carbs_target = profileData.dailyCarbsTarget;
-                delete dbProfileData.dailyCarbsTarget;
-            }
-            if (profileData.dailyFatTarget) {
-                dbProfileData.daily_fat_target = profileData.dailyFatTarget;
-                delete dbProfileData.dailyFatTarget;
-            }
-            if (profileData.dailyWaterTarget) {
-                dbProfileData.daily_water_target = profileData.dailyWaterTarget;
-                delete dbProfileData.dailyWaterTarget;
-            }
+            // Map goal values to database constraints
+            const mapGoal = (appGoal) => {
+                const mapping = {
+                    'lose': 'lose_weight',
+                    'maintain': 'maintain_weight',
+                    'gain': 'gain_weight'
+                };
+                return mapping[appGoal] || 'maintain_weight';
+            };
+
+            // Create clean database profile data with proper field mapping
+            const dbProfileData = {
+                user_id: userId,
+                name: profileData.name || null,
+                height: profileData.height || null,
+                weight: profileData.weight || null,
+                age: profileData.age || null,
+                gender: profileData.gender || null,
+                activity_level: profileData.activity_level ? mapActivityLevel(profileData.activity_level) :
+                    profileData.activityLevel ? mapActivityLevel(profileData.activityLevel) : null,
+                goal: profileData.goal ? mapGoal(profileData.goal) : null,
+                daily_calorie_target: profileData.daily_calorie_target || profileData.dailyCaloriesTarget ||
+                    profileData.dailyCalorieTarget || null,
+                daily_protein_target: profileData.daily_protein_target || profileData.dailyProteinTarget || null,
+                daily_carbs_target: profileData.daily_carbs_target || profileData.dailyCarbsTarget || null,
+                daily_fat_target: profileData.daily_fat_target || profileData.dailyFatTarget || null,
+                daily_water_target: profileData.daily_water_target || profileData.dailyWaterTarget ||
+                    profileData.dailyWaterGoalMl || 2000,
+            };
 
             const { data, error } = await supabase
                 .from(TABLES.USER_PROFILES)
-                .upsert(dbProfileData)
+                .upsert(dbProfileData, {
+                    onConflict: 'user_id',
+                    ignoreDuplicates: false
+                })
                 .select();
 
             if (error) throw error;

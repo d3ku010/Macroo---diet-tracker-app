@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import ResponsiveCard from '../../components/layout/ResponsiveCard';
+import ResponsiveLayout from '../../components/layout/ResponsiveLayout';
 import PrimaryButton from '../../components/ui/PrimaryButton';
 import { useTheme } from '../../components/ui/ThemeProvider';
 import { deleteFoodFromDatabase, getFoodDatabase, saveFoodToDatabase, updateFoodInDatabase } from '../../utils/supabaseStorage';
@@ -94,20 +96,16 @@ export default function FoodDbScreen() {
     };
 
     return (
-        <ScrollView
-            style={[styles.container, { backgroundColor: theme.background }]}
-            contentContainerStyle={{ padding: 16, paddingBottom: 160 }}
-            keyboardShouldPersistTaps="handled"
-        >
+        <ResponsiveLayout>
             <Text style={[styles.heading, { color: theme.text }]}>Food Database</Text>
 
-            <View style={[styles.card, { backgroundColor: theme.card }]}>
+            <ResponsiveCard size="large" style={{ marginBottom: 16 }}>
                 <Text style={[styles.subheading, { color: theme.text }]}>Add New Food</Text>
-                <TextInput value={newFood} onChangeText={setNewFood} placeholder="Name" placeholderTextColor={theme.subText} style={[styles.input, { borderColor: theme.muted, backgroundColor: theme.card, color: theme.text }]} />
-                <TextInput value={newCalories} onChangeText={setNewCalories} placeholder="Calories (per 100g)" keyboardType="numeric" placeholderTextColor={theme.subText} style={[styles.input, { borderColor: theme.muted, backgroundColor: theme.card, color: theme.text }]} />
-                <TextInput value={newProtein} onChangeText={setNewProtein} placeholder="Protein (per 100g)" keyboardType="numeric" placeholderTextColor={theme.subText} style={[styles.input, { borderColor: theme.muted, backgroundColor: theme.card, color: theme.text }]} />
-                <TextInput value={newCarbs} onChangeText={setNewCarbs} placeholder="Carbs (per 100g)" keyboardType="numeric" placeholderTextColor={theme.subText} style={[styles.input, { borderColor: theme.muted, backgroundColor: theme.card, color: theme.text }]} />
-                <TextInput value={newFat} onChangeText={setNewFat} placeholder="Fat (per 100g)" keyboardType="numeric" placeholderTextColor={theme.subText} style={[styles.input, { borderColor: theme.muted, backgroundColor: theme.card, color: theme.text }]} />
+                <TextInput value={newFood} onChangeText={setNewFood} placeholder="Name" placeholderTextColor={theme.subText} style={[styles.input, { borderColor: theme.muted, backgroundColor: theme.background, color: theme.text }]} />
+                <TextInput value={newCalories} onChangeText={setNewCalories} placeholder="Calories (per 100g)" keyboardType="numeric" placeholderTextColor={theme.subText} style={[styles.input, { borderColor: theme.muted, backgroundColor: theme.background, color: theme.text }]} />
+                <TextInput value={newProtein} onChangeText={setNewProtein} placeholder="Protein (per 100g)" keyboardType="numeric" placeholderTextColor={theme.subText} style={[styles.input, { borderColor: theme.muted, backgroundColor: theme.background, color: theme.text }]} />
+                <TextInput value={newCarbs} onChangeText={setNewCarbs} placeholder="Carbs (per 100g)" keyboardType="numeric" placeholderTextColor={theme.subText} style={[styles.input, { borderColor: theme.muted, backgroundColor: theme.background, color: theme.text }]} />
+                <TextInput value={newFat} onChangeText={setNewFat} placeholder="Fat (per 100g)" keyboardType="numeric" placeholderTextColor={theme.subText} style={[styles.input, { borderColor: theme.muted, backgroundColor: theme.background, color: theme.text }]} />
                 <View style={{ marginTop: 8, flexDirection: 'row', justifyContent: 'space-between' }}>
                     <View style={{ flex: 1, marginRight: 8 }}>
                         <PrimaryButton title="Add Food" onPress={handleAddFood} />
@@ -117,19 +115,23 @@ export default function FoodDbScreen() {
                         <PrimaryButton title="Refresh" onPress={load} />
                     </View>
                 </View>
-            </View>
+            </ResponsiveCard>
 
             {foods.length === 0 ? (
-                <Text style={{ color: theme.subText, marginTop: 12 }}>No foods in the database.</Text>
+                <ResponsiveCard size="medium">
+                    <Text style={{ color: theme.subText, textAlign: 'center' }}>No foods in the database.</Text>
+                </ResponsiveCard>
             ) : (
                 foods.map((f, i) => (
-                    <View key={i} style={[styles.foodItem, { backgroundColor: theme.card }]}>
+                    <ResponsiveCard key={i} size="medium" style={{ marginBottom: 12 }}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <View>
-                                <Text style={[styles.name, { color: theme.text }]}>{f.name}</Text>
-                                <Text style={[styles.meta, { color: theme.subText }]}>{f.calories} kcal / 100g  ² P {f.protein}  ² C {f.carbs}  ² F {f.fat}</Text>
+                            <View style={{ flex: 1, marginRight: 12 }}>
+                                <Text style={[styles.name, { color: theme.text }]} numberOfLines={2}>{f.name}</Text>
+                                <Text style={[styles.meta, { color: theme.subText }]} numberOfLines={1}>
+                                    {f.calories} kcal/100g • P {f.protein} • C {f.carbs} • F {f.fat}
+                                </Text>
                             </View>
-                            <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+                            <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center', flexShrink: 0 }}>
                                 <TouchableOpacity onPress={() => openEdit(f)} style={{ padding: 6 }} accessibilityLabel="Edit food">
                                     <Ionicons name="pencil" size={18} color={theme.primary} />
                                 </TouchableOpacity>
@@ -143,7 +145,7 @@ export default function FoodDbScreen() {
                                 </TouchableOpacity>
                             </View>
                         </View>
-                    </View>
+                    </ResponsiveCard>
                 ))
             )}
 
@@ -152,11 +154,11 @@ export default function FoodDbScreen() {
                 <View style={{ flex: 1, backgroundColor: theme.name === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.3)', justifyContent: 'center', padding: 24 }}>
                     <View style={{ backgroundColor: theme.card, borderRadius: 12, padding: 16 }}>
                         <Text style={{ fontWeight: '700', fontSize: 16, marginBottom: 8, color: theme.text }}>Edit Food</Text>
-                        <TextInput value={editName} onChangeText={setEditName} placeholder="Name" style={[styles.input, { borderColor: theme.muted, backgroundColor: theme.card, color: theme.text }]} />
-                        <TextInput value={editCalories} onChangeText={setEditCalories} placeholder="Calories" keyboardType="numeric" style={[styles.input, { borderColor: theme.muted, backgroundColor: theme.card, color: theme.text }]} />
-                        <TextInput value={editProtein} onChangeText={setEditProtein} placeholder="Protein" keyboardType="numeric" style={[styles.input, { borderColor: theme.muted, backgroundColor: theme.card, color: theme.text }]} />
-                        <TextInput value={editCarbs} onChangeText={setEditCarbs} placeholder="Carbs" keyboardType="numeric" style={[styles.input, { borderColor: theme.muted, backgroundColor: theme.card, color: theme.text }]} />
-                        <TextInput value={editFat} onChangeText={setEditFat} placeholder="Fat" keyboardType="numeric" style={[styles.input, { borderColor: theme.muted, backgroundColor: theme.card, color: theme.text }]} />
+                        <TextInput value={editName} onChangeText={setEditName} placeholder="Name" placeholderTextColor={theme.subText} style={[styles.input, { borderColor: theme.muted, backgroundColor: theme.background, color: theme.text }]} />
+                        <TextInput value={editCalories} onChangeText={setEditCalories} placeholder="Calories" keyboardType="numeric" placeholderTextColor={theme.subText} style={[styles.input, { borderColor: theme.muted, backgroundColor: theme.background, color: theme.text }]} />
+                        <TextInput value={editProtein} onChangeText={setEditProtein} placeholder="Protein" keyboardType="numeric" placeholderTextColor={theme.subText} style={[styles.input, { borderColor: theme.muted, backgroundColor: theme.background, color: theme.text }]} />
+                        <TextInput value={editCarbs} onChangeText={setEditCarbs} placeholder="Carbs" keyboardType="numeric" placeholderTextColor={theme.subText} style={[styles.input, { borderColor: theme.muted, backgroundColor: theme.background, color: theme.text }]} />
+                        <TextInput value={editFat} onChangeText={setEditFat} placeholder="Fat" keyboardType="numeric" placeholderTextColor={theme.subText} style={[styles.input, { borderColor: theme.muted, backgroundColor: theme.background, color: theme.text }]} />
                         <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
                             <PrimaryButton title="Cancel" onPress={() => setEditModalVisible(false)} style={{ marginRight: 8 }} />
                             <PrimaryButton title="Save" onPress={handleSaveEdit} />
@@ -164,14 +166,21 @@ export default function FoodDbScreen() {
                     </View>
                 </View>
             </Modal>
-        </ScrollView>
+        </ResponsiveLayout>
     );
 }
 
+const screenWidth = Dimensions.get('window').width;
+
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    heading: { fontSize: 22, fontWeight: '700', marginBottom: 12 },
-    subheading: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
+    heading: {
+        fontSize: screenWidth < 380 ? 20 : 22,
+        fontWeight: '700',
+        marginBottom: 16,
+        marginTop: 8
+    },
+    subheading: { fontSize: 18, fontWeight: '700', marginBottom: 12 },
     input: {
         borderWidth: 1,
         padding: 10,
@@ -196,6 +205,6 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         elevation: 1,
     },
-    name: { fontSize: 16, fontWeight: '700' },
-    meta: { fontSize: 12, marginTop: 4 },
+    name: { fontSize: screenWidth < 380 ? 14 : 16, fontWeight: '700' },
+    meta: { fontSize: screenWidth < 380 ? 11 : 12, marginTop: 4 },
 });

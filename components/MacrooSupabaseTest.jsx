@@ -77,14 +77,24 @@ export default function MacrooSupabaseTest() {
                     onPress: async () => {
                         try {
                             setTestResults(prev => [...prev, '🚀 Starting migration...']);
+                            setTestResults(prev => [...prev, '🔍 Checking database connection...']);
+
+                            // Test database connection first
+                            const { error: connectionError } = await supabase.from('foods').select('count').limit(1);
+                            if (connectionError) {
+                                throw new Error(`Database connection failed: ${connectionError.message}`);
+                            }
+
+                            setTestResults(prev => [...prev, '✅ Database connection verified']);
 
                             const macrooMigration = (await import('../utils/macrooMigration')).default;
                             const needsMigration = await macrooMigration.isMigrationNeeded();
 
                             if (needsMigration) {
                                 setTestResults(prev => [...prev, '📦 Found data to migrate']);
+                                setTestResults(prev => [...prev, '👤 Creating user account...']);
 
-                                // Run the full migration
+                                // Run the full migration with better error reporting
                                 await macrooMigration.migrateAllData('00000000-0000-0000-0000-000000000001');
 
                                 setTestResults(prev => [...prev, '✅ Migration completed successfully!']);
@@ -94,8 +104,21 @@ export default function MacrooSupabaseTest() {
                                 Alert.alert('No Migration Needed', 'No AsyncStorage data found to migrate.');
                             }
                         } catch (error) {
-                            setTestResults(prev => [...prev, `❌ Migration failed: ${error.message}`]);
-                            Alert.alert('Migration Failed', error.message);
+                            console.error('Migration error details:', error);
+                            const errorMsg = error.message || 'Unknown error occurred';
+                            setTestResults(prev => [...prev, `❌ Migration failed: ${errorMsg}`]);
+
+                            // Provide more helpful error messages
+                            let userFriendlyMsg = errorMsg;
+                            if (errorMsg.includes('duplicate')) {
+                                userFriendlyMsg = 'Some data already exists in the database. Migration partially completed.';
+                            } else if (errorMsg.includes('foreign key')) {
+                                userFriendlyMsg = 'Database relationship error. Please contact support.';
+                            } else if (errorMsg.includes('connection')) {
+                                userFriendlyMsg = 'Cannot connect to database. Please check your internet connection.';
+                            }
+
+                            Alert.alert('Migration Failed', userFriendlyMsg);
                         }
                     }
                 }

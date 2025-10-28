@@ -21,6 +21,9 @@ class MacrooMigration {
         console.log('🚀 Starting Macroo data migration to Supabase...');
 
         try {
+            // Ensure user exists in users table first
+            await this.ensureUserExists(userId);
+
             // Migrate foods first (needed for meal entries)
             await this.migrateFoods(userId);
 
@@ -42,6 +45,39 @@ class MacrooMigration {
     }
 
     /**
+     * Ensure user exists in users table
+     * @param {string} userId - User ID
+     */
+    async ensureUserExists(userId) {
+        try {
+            const { data: existingUser } = await macrooDatabase.supabase
+                .from('users')
+                .select('id')
+                .eq('id', userId)
+                .single();
+
+            if (!existingUser) {
+                console.log('Creating user record...');
+                const { error } = await macrooDatabase.supabase
+                    .from('users')
+                    .insert([{
+                        id: userId,
+                        name: 'Migration User',
+                        email: null
+                    }]);
+
+                if (error && !error.message.includes('duplicate')) {
+                    throw error;
+                }
+            }
+        } catch (error) {
+            if (!error.message.includes('Row not found') && !error.message.includes('duplicate')) {
+                throw error;
+            }
+        }
+    }
+
+    /**
      * Migrate food database
      */
     async migrateFoods(userId) {
@@ -59,13 +95,29 @@ class MacrooMigration {
 
             for (const food of foods) {
                 try {
-                    await macrooDatabase.addFood(food, userId);
-                    console.log(`✓ Migrated food: ${food.name}`);
+                    // Validate and clean food data
+                    const cleanFood = {
+                        name: food.name || 'Unknown Food',
+                        calories: parseInt(food.calories) || 0,
+                        protein: parseFloat(food.protein) || 0,
+                        carbs: parseFloat(food.carbs) || 0,
+                        fat: parseFloat(food.fat) || 0,
+                        fiber: parseFloat(food.fiber) || 0,
+                        sugar: parseFloat(food.sugar) || 0,
+                        sodium: parseFloat(food.sodium) || 0,
+                        serving_size: food.serving_size || '100g',
+                        category: food.category || 'other',
+                        brand: food.brand || null,
+                        barcode: food.barcode || null,
+                    };
+
+                    await macrooDatabase.addFood(cleanFood, userId);
+                    console.log(`✓ Migrated food: ${cleanFood.name}`);
                 } catch (error) {
-                    if (error.message?.includes('duplicate')) {
+                    if (error.message?.includes('duplicate') || error.message?.includes('unique')) {
                         console.log(`⚠️ Food already exists: ${food.name}`);
                     } else {
-                        console.error(`❌ Failed to migrate food: ${food.name}`, error);
+                        console.error(`❌ Failed to migrate food: ${food.name}`, error.message);
                     }
                 }
             }
@@ -102,26 +154,54 @@ class MacrooMigration {
 
             for (const meal of meals) {
                 try {
-                    const foodId = foodMap[meal.foodName?.toLowerCase()];
-                    if (!foodId) {
-                        console.log(`⚠️ Food not found for meal: ${meal.foodName}`);
+                    console.log('Processing meal entry:', meal);
+                    const foodName = meal.foodName || meal.food_name || meal.name || meal.food || meal.item;
+                    if (!foodName) {
+                        console.log(`⚠️ Meal entry missing food name, skipping:`, meal);
                         continue;
+                    }
+
+                    const foodId = foodMap[foodName.toLowerCase()];
+                    if (!foodId) {
+                        console.log(`⚠️ Food not found for meal: ${foodName}`);
+                        continue;
+                    }
+
+                    // Validate meal type against database constraints
+                    const validMealTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
+                    let mealType = meal.mealType || meal.meal_type || 'snack';
+                    if (!validMealTypes.includes(mealType)) {
+                        mealType = 'snack';
+                    }
+
+                    // Ensure date is in proper format
+                    let mealDate = meal.date;
+                    if (mealDate && typeof mealDate === 'string') {
+                        // Convert various date formats to YYYY-MM-DD
+                        const dateObj = new Date(mealDate);
+                        if (!isNaN(dateObj.getTime())) {
+                            mealDate = dateObj.toISOString().split('T')[0];
+                        } else {
+                            mealDate = new Date().toISOString().split('T')[0];
+                        }
+                    } else {
+                        mealDate = new Date().toISOString().split('T')[0];
                     }
 
                     const mealEntry = {
                         user_id: userId,
                         food_id: foodId,
-                        meal_type: meal.mealType || 'snack',
-                        quantity: meal.quantity || 1,
-                        serving_size: meal.servingSize,
-                        date: meal.date,
-                        notes: meal.notes,
+                        meal_type: mealType,
+                        quantity: parseFloat(meal.quantity) || 1,
+                        serving_size: meal.servingSize || meal.serving_size || '100g',
+                        date: mealDate,
+                        notes: meal.notes || null,
                     };
 
                     await macrooDatabase.addMealEntry(mealEntry);
-                    console.log(`✓ Migrated meal: ${meal.foodName} (${meal.date})`);
+                    console.log(`✓ Migrated meal: ${foodName} (${mealDate})`);
                 } catch (error) {
-                    console.error(`❌ Failed to migrate meal: ${meal.foodName}`, error);
+                    console.error(`❌ Failed to migrate meal: ${meal.foodName || 'unknown'}`, error.message);
                 }
             }
 
@@ -150,17 +230,42 @@ class MacrooMigration {
 
             for (const entry of waterEntries) {
                 try {
+                    // Validate and clean water entry data
+                    let entryDate = entry.date;
+                    if (entryDate && typeof entryDate === 'string') {
+                        const dateObj = new Date(entryDate);
+                        if (!isNaN(dateObj.getTime())) {
+                            entryDate = dateObj.toISOString().split('T')[0];
+                        } else {
+                            entryDate = new Date().toISOString().split('T')[0];
+                        }
+                    } else {
+                        entryDate = new Date().toISOString().split('T')[0];
+                    }
+
+                    let entryTime = entry.time;
+                    if (entryTime && typeof entryTime === 'string') {
+                        // Validate time format (HH:MM:SS or HH:MM)
+                        if (!/^\d{2}:\d{2}(:\d{2})?$/.test(entryTime)) {
+                            entryTime = new Date().toTimeString().split(' ')[0];
+                        } else if (entryTime.length === 5) {
+                            entryTime += ':00'; // Add seconds if missing
+                        }
+                    } else {
+                        entryTime = new Date().toTimeString().split(' ')[0];
+                    }
+
                     const waterEntry = {
                         user_id: userId,
-                        amount: entry.amount,
-                        date: entry.date,
-                        time: entry.time,
+                        amount: parseInt(entry.amount) || 250, // Default to 250ml if invalid
+                        date: entryDate,
+                        time: entryTime,
                     };
 
                     await macrooDatabase.addWaterEntry(waterEntry);
-                    console.log(`✓ Migrated water entry: ${entry.amount}ml (${entry.date})`);
+                    console.log(`✓ Migrated water entry: ${waterEntry.amount}ml (${entryDate})`);
                 } catch (error) {
-                    console.error(`❌ Failed to migrate water entry:`, error);
+                    console.error(`❌ Failed to migrate water entry:`, error.message);
                 }
             }
 
@@ -185,7 +290,25 @@ class MacrooMigration {
             }
 
             const profile = JSON.parse(profileData);
-            await macrooDatabase.saveUserProfile(userId, profile);
+            console.log('Profile data from AsyncStorage:', profile);
+
+            // Clean and map profile data to match database schema
+            const cleanProfile = {
+                name: profile.name || null,
+                height: parseInt(profile.height) || null,
+                weight: parseFloat(profile.weight) || null,
+                age: parseInt(profile.age) || null,
+                gender: profile.gender || null,
+                activity_level: profile.activityLevel || profile.activity_level || null,
+                goal: profile.goal || null,
+                daily_calorie_target: parseInt(profile.dailyCalorieTarget) || parseInt(profile.daily_calorie_target) || null,
+                daily_protein_target: parseFloat(profile.dailyProteinTarget) || parseFloat(profile.daily_protein_target) || null,
+                daily_carbs_target: parseFloat(profile.dailyCarbsTarget) || parseFloat(profile.daily_carbs_target) || null,
+                daily_fat_target: parseFloat(profile.dailyFatTarget) || parseFloat(profile.daily_fat_target) || null,
+                daily_water_target: parseInt(profile.dailyWaterGoalMl) || parseInt(profile.dailyWaterTarget) || parseInt(profile.daily_water_target) || 2000,
+            };
+
+            await macrooDatabase.saveUserProfile(userId, cleanProfile);
 
             console.log('✅ User profile migration completed');
         } catch (error) {

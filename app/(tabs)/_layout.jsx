@@ -1,8 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { Text, View } from 'react-native';
-import ThemeProvider, { useTheme } from '../../components/ui/ThemeProvider';
-import ToastHost from '../../components/ui/Toast';
+import { useTheme } from '../../components/ui/ThemeProvider';
 
 function ThemedTabs() {
   const { theme } = useTheme();
@@ -77,12 +76,5 @@ function ThemedTabs() {
 }
 
 export default function TabLayout() {
-  return (
-    <ThemeProvider>
-      <View style={{ flex: 1 }}>
-        <ToastHost />
-        <ThemedTabs />
-      </View>
-    </ThemeProvider>
-  );
+  return <ThemedTabs />;
 }

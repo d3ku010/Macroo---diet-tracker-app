@@ -95,6 +95,36 @@ const palettes = {
             pillBg: '#2a1400',
             fat: '#ff8f6b',
         }
+    },
+    modern: {
+        light: {
+            name: 'light',
+            background: '#F8FAFC',
+            card: '#FFFFFF',
+            text: '#1E293B',
+            subText: '#64748B',
+            primary: '#6C5CE7',
+            onPrimary: '#FFFFFF',
+            success: '#00B894',
+            danger: '#E17055',
+            muted: '#E2E8F0',
+            pillBg: '#F1F5F9',
+            fat: '#FDCB6E',
+        },
+        dark: {
+            name: 'dark',
+            background: '#0F172A',
+            card: '#1E293B',
+            text: '#F8FAFC',
+            subText: '#94A3B8',
+            primary: '#A29BFE',
+            onPrimary: '#1E293B',
+            success: '#00CEC9',
+            danger: '#FD79A8',
+            muted: '#334155',
+            pillBg: '#475569',
+            fat: '#FDCB6E',
+        }
     }
 };
 

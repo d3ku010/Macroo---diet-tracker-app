@@ -1,7 +1,9 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Dimensions, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, Dimensions, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { LineChart } from 'react-native-chart-kit';
+import ResponsiveCard, { StatsCard } from '../../components/layout/ResponsiveCard';
+import ResponsiveLayout from '../../components/layout/ResponsiveLayout';
 import SegmentedControl from '../../components/ui/SegmentedControl';
 import { useTheme } from '../../components/ui/ThemeProvider';
 import { getMeals } from '../../utils/supabaseStorage';
@@ -23,6 +25,8 @@ export default function MonthlyScreen() {
     const [nutrient, setNutrient] = useState('all');
     const [viewMode, setViewMode] = useState('month'); // 'month' or 'day' or 'all'
     const [dailyTotals, setDailyTotals] = useState({ calories: 0, protein: 0, carbs: 0, fat: 0 });
+    const [dateModalVisible, setDateModalVisible] = useState(false);
+    const [dateInput, setDateInput] = useState('');
     const chartAnim = useRef(new Animated.Value(0)).current;
 
     const load = async () => {
@@ -120,15 +124,13 @@ export default function MonthlyScreen() {
     };
 
     const mealsForSelected = meals.filter(m => m.date === selectedDate.toISOString().slice(0, 10));
-    const [dateModalVisible, setDateModalVisible] = useState(false);
-    const [dateInput, setDateInput] = useState(selectedDate.toISOString().slice(0, 10));
 
     return (
-        <ScrollView style={[styles.container, { backgroundColor: theme.background }]} contentContainerStyle={{ paddingBottom: 140 }}>
+        <ResponsiveLayout>
             <Text style={[styles.heading, { color: theme.text }]}>📊 Nutrition History</Text>
 
             {/* Date Selection Card */}
-            <View style={[styles.card, { backgroundColor: theme.card, shadowColor: theme.muted }]}>
+            <ResponsiveCard size="large" style={{ marginBottom: 16 }}>
                 <View style={styles.cardHeader}>
                     <Text style={[styles.cardTitle, { color: theme.text }]}>📅 Selected Date</Text>
                 </View>
@@ -156,35 +158,35 @@ export default function MonthlyScreen() {
                         <Text style={[styles.navButtonText, { color: theme.primary }]}>Next →</Text>
                     </TouchableOpacity>
                 </View>
-            </View>
+            </ResponsiveCard>
 
             {/* Daily Stats Card */}
-            <View style={[styles.card, { backgroundColor: theme.card, shadowColor: theme.muted }]}>
+            <ResponsiveCard size="large" style={{ marginBottom: 16 }}>
                 <View style={styles.cardHeader}>
                     <Text style={[styles.cardTitle, { color: theme.text }]}>📈 Daily Summary</Text>
                 </View>
 
                 <View style={styles.statsGrid}>
-                    <View style={[styles.statCard, { backgroundColor: theme.background }]}>
-                        <Text style={[styles.statLabel, { color: theme.subText }]}>🔥 Calories</Text>
-                        <Text style={[styles.statValue, { color: theme.danger }]}>{dailyTotals.calories}</Text>
-                        <Text style={[styles.statUnit, { color: theme.subText }]}>kcal</Text>
-                    </View>
-                    <View style={[styles.statCard, { backgroundColor: theme.background }]}>
-                        <Text style={[styles.statLabel, { color: theme.subText }]}>💪 Protein</Text>
-                        <Text style={[styles.statValue, { color: theme.success }]}>{dailyTotals.protein}</Text>
-                        <Text style={[styles.statUnit, { color: theme.subText }]}>g</Text>
-                    </View>
-                    <View style={[styles.statCard, { backgroundColor: theme.background }]}>
-                        <Text style={[styles.statLabel, { color: theme.subText }]}>🍞 Carbs</Text>
-                        <Text style={[styles.statValue, { color: theme.primary }]}>{dailyTotals.carbs}</Text>
-                        <Text style={[styles.statUnit, { color: theme.subText }]}>g</Text>
-                    </View>
-                    <View style={[styles.statCard, { backgroundColor: theme.background }]}>
-                        <Text style={[styles.statLabel, { color: theme.subText }]}>🥑 Fat</Text>
-                        <Text style={[styles.statValue, { color: theme.fat }]}>{dailyTotals.fat}</Text>
-                        <Text style={[styles.statUnit, { color: theme.subText }]}>g</Text>
-                    </View>
+                    <StatsCard
+                        label="🔥 Calories"
+                        value={`${dailyTotals.calories} kcal`}
+                        color={theme.danger}
+                    />
+                    <StatsCard
+                        label="💪 Protein"
+                        value={`${dailyTotals.protein} g`}
+                        color={theme.success}
+                    />
+                    <StatsCard
+                        label="🍞 Carbs"
+                        value={`${dailyTotals.carbs} g`}
+                        color={theme.primary}
+                    />
+                    <StatsCard
+                        label="🥑 Fat"
+                        value={`${dailyTotals.fat} g`}
+                        color={theme.fat}
+                    />
                 </View>
 
                 {/* Daily Meals Section */}
@@ -199,106 +201,112 @@ export default function MonthlyScreen() {
                         ))
                     )}
                 </View>
-            </View>
+            </ResponsiveCard>
 
-            <Text style={[styles.heading, { marginTop: 6, color: theme.text }]}>Monthly Chart</Text>
+            <ResponsiveCard size="large" style={{ marginBottom: 16 }}>
+                <Text style={[styles.heading, { marginTop: 0, marginBottom: 16, color: theme.text }]}>Monthly Chart</Text>
 
-            {/* Filters placed directly under the Monthly Chart heading as requested */}
-            <View style={{ marginTop: 8, marginBottom: 12 }}>
-                {/* View mode controls: larger, prominent */}
-                <View style={{ marginBottom: 8 }}>
-                    <SegmentedControl
-                        options={[{ key: 'day', label: 'Day' }, { key: 'month', label: '30 Days' }, { key: 'all', label: 'Full' }]}
-                        value={viewMode}
-                        onChange={(k) => setViewMode(k)}
-                        style={{ marginBottom: 8 }}
-                    />
-                    <SegmentedControl
-                        options={[{ key: 'all', label: 'All' }, { key: 'protein', label: 'Protein' }, { key: 'carbs', label: 'Carbs' }, { key: 'fat', label: 'Fat' }]}
-                        value={nutrient}
-                        onChange={(k) => setNutrient(k)}
-                    />
-                    {/* integrated 'All' option is now part of the macro segmented control above */}
+                {/* Filters placed directly under the Monthly Chart heading as requested */}
+                <View style={{ marginBottom: 16 }}>
+                    {/* View mode controls: larger, prominent */}
+                    <View style={{ marginBottom: 8 }}>
+                        <SegmentedControl
+                            options={[{ key: 'day', label: 'Day' }, { key: 'month', label: '30 Days' }, { key: 'all', label: 'Full' }]}
+                            value={viewMode}
+                            onChange={(k) => setViewMode(k)}
+                            style={{ marginBottom: 8 }}
+                        />
+                        <SegmentedControl
+                            options={[{ key: 'all', label: 'All' }, { key: 'protein', label: 'Protein' }, { key: 'carbs', label: 'Carbs' }, { key: 'fat', label: 'Fat' }]}
+                            value={nutrient}
+                            onChange={(k) => setNutrient(k)}
+                        />
+                        {/* integrated 'All' option is now part of the macro segmented control above */}
+                    </View>
+
+                    {/* single segmented control above replaces duplicated macro buttons */}
                 </View>
-
-                {/* single segmented control above replaces duplicated macro buttons */}
-            </View>
-            {/* date picker modal */}
-            <Modal visible={dateModalVisible} transparent animationType="fade" onRequestClose={() => setDateModalVisible(false)}>
-                <View style={{ flex: 1, backgroundColor: theme.name === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.3)', justifyContent: 'center', padding: 24 }}>
-                    <View style={{ backgroundColor: theme.card, borderRadius: 12, padding: 16 }}>
-                        <Text style={{ fontWeight: '700', fontSize: 16, marginBottom: 8, color: theme.text }}>Jump to date</Text>
-                        {DateTimePicker ? (
-                            <DateTimePicker
-                                value={selectedDate}
-                                mode="date"
-                                display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
-                                onChange={(e, d) => {
-                                    if (d) {
-                                        setSelectedDate(d);
-                                        setDateModalVisible(false);
-                                        load();
-                                    }
-                                }}
-                                style={{ width: '100%' }}
-                            />
-                        ) : (
-                            <View>
-                                <TextInput value={dateInput} onChangeText={setDateInput} placeholder="YYYY-MM-DD" placeholderTextColor={theme.subText} style={{ borderWidth: 1, borderColor: theme.muted, padding: 10, borderRadius: 8, marginBottom: 8, color: theme.text, backgroundColor: theme.card }} />
-                                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
-                                    <TouchableOpacity onPress={() => setDateModalVisible(false)} style={{ padding: 8, cursor: Platform.OS === 'web' ? 'pointer' : 'default' }}><Text style={{ color: theme.subText }}>Cancel</Text></TouchableOpacity>
-                                    <TouchableOpacity onPress={() => {
-                                        const d = new Date(dateInput);
-                                        if (!isNaN(d)) {
+                {/* date picker modal */}
+                <Modal visible={dateModalVisible} transparent animationType="fade" onRequestClose={() => setDateModalVisible(false)}>
+                    <View style={{ flex: 1, backgroundColor: theme.name === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.3)', justifyContent: 'center', padding: 24 }}>
+                        <View style={{ backgroundColor: theme.card, borderRadius: 12, padding: 16 }}>
+                            <Text style={{ fontWeight: '700', fontSize: 16, marginBottom: 8, color: theme.text }}>Jump to date</Text>
+                            {DateTimePicker ? (
+                                <DateTimePicker
+                                    value={selectedDate}
+                                    mode="date"
+                                    display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
+                                    onChange={(e, d) => {
+                                        if (d) {
                                             setSelectedDate(d);
                                             setDateModalVisible(false);
                                             load();
-                                        } else {
-                                            setDateInput(selectedDate.toISOString().slice(0, 10));
                                         }
-                                    }} style={{ padding: 8, cursor: Platform.OS === 'web' ? 'pointer' : 'default' }}><Text style={{ color: theme.primary }}>Go</Text></TouchableOpacity>
+                                    }}
+                                    style={{ width: '100%' }}
+                                />
+                            ) : (
+                                <View>
+                                    <TextInput value={dateInput} onChangeText={setDateInput} placeholder="YYYY-MM-DD" placeholderTextColor={theme.subText} style={{ borderWidth: 1, borderColor: theme.muted, padding: 10, borderRadius: 8, marginBottom: 8, color: theme.text, backgroundColor: theme.card }} />
+                                    <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
+                                        <TouchableOpacity onPress={() => setDateModalVisible(false)} style={{ padding: 8, cursor: Platform.OS === 'web' ? 'pointer' : 'default' }}><Text style={{ color: theme.subText }}>Cancel</Text></TouchableOpacity>
+                                        <TouchableOpacity onPress={() => {
+                                            const d = new Date(dateInput);
+                                            if (!isNaN(d)) {
+                                                setSelectedDate(d);
+                                                setDateModalVisible(false);
+                                                load();
+                                            } else {
+                                                setDateInput(selectedDate.toISOString().slice(0, 10));
+                                            }
+                                        }} style={{ padding: 8, cursor: Platform.OS === 'web' ? 'pointer' : 'default' }}><Text style={{ color: theme.primary }}>Go</Text></TouchableOpacity>
+                                    </View>
                                 </View>
-                            </View>
-                        )}
+                            )}
+                        </View>
                     </View>
-                </View>
-            </Modal>
+                </Modal>
 
-            {chartData ? (
-                <Animated.View style={[styles.chartCard, { opacity: chartAnim }]}>
-                    <LineChart
-                        data={chartData}
-                        width={Math.max(320, screenWidth - 48)}
-                        height={280}
-                        chartConfig={{
-                            backgroundGradientFrom: theme.card,
-                            backgroundGradientTo: theme.card,
-                            decimalPlaces: 0,
-                            color: (opacity = 1) => theme.primary,
-                            labelColor: (opacity = 1) => theme.subText,
-                            propsForBackgroundLines: { stroke: theme.pillBg },
-                            strokeWidth: 2,
-                        }}
-                        bezier
-                        style={{ borderRadius: 12 }}
-                        withDots={false}
-                        fromZero
-                        yLabelsOffset={6}
-                        yAxisInterval={chartData?.meta?.yStep || 1}
-                        yAxisSuffix=""
-                    />
-                </Animated.View>
-            ) : <Text style={{ color: theme.subText }}>Loading...</Text>}
+                {chartData ? (
+                    <Animated.View style={[styles.chartCard, { opacity: chartAnim }]}>
+                        <LineChart
+                            data={chartData}
+                            width={Math.max(320, screenWidth - 48)}
+                            height={280}
+                            chartConfig={{
+                                backgroundGradientFrom: theme.card,
+                                backgroundGradientTo: theme.card,
+                                decimalPlaces: 0,
+                                color: (opacity = 1) => theme.primary,
+                                labelColor: (opacity = 1) => theme.subText,
+                                propsForBackgroundLines: { stroke: theme.pillBg },
+                                strokeWidth: 2,
+                            }}
+                            bezier
+                            style={{ borderRadius: 12 }}
+                            withDots={false}
+                            fromZero
+                            yLabelsOffset={6}
+                            yAxisInterval={chartData?.meta?.yStep || 1}
+                            yAxisSuffix=""
+                        />
+                    </Animated.View>
+                ) : <Text style={{ color: theme.subText }}>Loading...</Text>}
+            </ResponsiveCard>
 
-            <View style={{ height: 24 }} />
-
-        </ScrollView>
+        </ResponsiveLayout>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, padding: 16 },
-    heading: { fontSize: 22, fontWeight: '800', marginBottom: 16, textAlign: 'center' },
+    container: { flex: 1 },
+    heading: {
+        fontSize: screenWidth < 380 ? 20 : 22,
+        fontWeight: '800',
+        marginBottom: 16,
+        marginTop: 8,
+        textAlign: 'center'
+    },
     card: {
         padding: 16,
         borderRadius: 16,
@@ -346,9 +354,9 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     statsGrid: {
-        flexDirection: 'row',
+        flexDirection: screenWidth < 380 ? 'column' : 'row',
         justifyContent: 'space-between',
-        gap: 8,
+        gap: screenWidth < 380 ? 8 : 8,
         marginBottom: 16,
     },
     statCard: {

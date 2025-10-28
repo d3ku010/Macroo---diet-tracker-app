@@ -152,12 +152,17 @@ export const deleteMeal = async (mealId) => {
 
 export const saveWaterEntry = async (waterEntry) => {
     try {
+        // Validate required fields
+        if (!waterEntry.amount || isNaN(waterEntry.amount) || waterEntry.amount <= 0) {
+            throw new Error('Invalid water amount. Must be a positive number.');
+        }
+
         console.log('💧 Saving water entry to Supabase:', waterEntry.amount + 'ml');
 
         const supabaseWater = {
             user_id: DEMO_USER_ID,
-            amount: waterEntry.amount,
-            date: waterEntry.date,
+            amount: parseInt(waterEntry.amount), // Ensure it's an integer
+            date: waterEntry.date || new Date().toISOString().split('T')[0], // Default to today if not provided
             time: waterEntry.time || new Date().toTimeString().split(' ')[0],
         };
 
