@@ -14,18 +14,20 @@ import {
 import ExportBackupManager from '../../components/forms/ExportBackupManager';
 import ResponsiveCard from '../../components/layout/ResponsiveCard';
 import ResponsiveLayout from '../../components/layout/ResponsiveLayout';
-import HamburgerMenu from '../../components/navigation/HamburgerMenu';
+import HamburgerMenu, { MenuItem, MenuSection } from '../../components/navigation/HamburgerMenu';
+import ThemeDialog from '../../components/ui/ThemeDialog';
 import { useTheme } from '../../components/ui/ThemeProvider';
 import { getProfile, saveProfile } from '../../utils/storage';
 
 const ProfileScreen = () => {
-    const { theme } = useTheme();
+    const { theme, toggle, paletteName, setPalette, palettesList } = useTheme();
     const router = useRouter();
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showExportModal, setShowExportModal] = useState(false);
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [themeDialogOpen, setThemeDialogOpen] = useState(false);
 
     useEffect(() => {
         loadUserProfile();
@@ -54,6 +56,8 @@ const ProfileScreen = () => {
             }
         } catch (error) {
             console.error('Error loading profile:', error);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -114,12 +118,42 @@ const ProfileScreen = () => {
     return (
         <ResponsiveLayout>
             <HamburgerMenu
-                isOpen={isMenuOpen}
+                visible={isMenuOpen}
                 onClose={() => setIsMenuOpen(false)}
-                onExportData={() => setShowExportModal(true)}
-            />
-
-            {/* Header */}
+            >
+                <MenuSection title="Settings">
+                    <MenuItem
+                        icon="color-palette-outline"
+                        title="Theme & Colors"
+                        subtitle={`${paletteName.charAt(0).toUpperCase() + paletteName.slice(1)} - ${theme.name === 'dark' ? 'Dark' : 'Light'} mode`}
+                        onPress={() => {
+                            setThemeDialogOpen(true);
+                            setIsMenuOpen(false);
+                        }}
+                    />
+                </MenuSection>                <MenuSection title="Data">
+                    <MenuItem
+                        icon="download-outline"
+                        title="Export Data"
+                        subtitle="Backup your information"
+                        onPress={() => {
+                            setShowExportModal(true);
+                            setIsMenuOpen(false);
+                        }}
+                    />
+                </MenuSection>
+                <MenuSection title="Support">
+                    <MenuItem
+                        icon="help-circle-outline"
+                        title="Help & Support"
+                        subtitle="Get assistance"
+                        onPress={() => {
+                            Alert.alert('Help', 'Contact support at help@diettracker.com');
+                            setIsMenuOpen(false);
+                        }}
+                    />
+                </MenuSection>
+            </HamburgerMenu>            {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity
                     onPress={() => setIsMenuOpen(true)}
@@ -258,6 +292,12 @@ const ProfileScreen = () => {
                     onDataImported={handleDataImported}
                 />
             </Modal>
+
+            {/* Theme Dialog */}
+            <ThemeDialog
+                visible={themeDialogOpen}
+                onClose={() => setThemeDialogOpen(false)}
+            />
         </ResponsiveLayout>
     );
 };

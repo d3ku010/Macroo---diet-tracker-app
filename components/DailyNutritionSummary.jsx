@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
-import { Dimensions, StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
+import { Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { getMeals, getProfile } from '../utils/supabaseStorage';
+import { ProgressRing } from './charts/ProgressRing';
 import { useTheme } from './ui/ThemeProvider';
 
 const { width } = Dimensions.get('window');
@@ -76,49 +76,7 @@ const DailyNutritionSummary = ({ userId, date }) => {
         return theme.danger;
     };
 
-    const ProgressRing = ({ consumed, goal, size = 60, strokeWidth = 6 }) => {
-        const radius = (size - strokeWidth) / 2;
-        const circumference = radius * 2 * Math.PI;
-        const percentage = Math.min((consumed / goal) * 100, 100);
-        const strokeDashoffset = circumference - (percentage / 100) * circumference;
 
-        return (
-            <View style={{ width: size, height: size }}>
-                <Svg width={size} height={size} style={{ position: 'absolute' }}>
-                    {/* Background circle */}
-                    <Circle
-                        cx={size / 2}
-                        cy={size / 2}
-                        r={radius}
-                        stroke={theme.muted}
-                        strokeWidth={strokeWidth}
-                        fill="transparent"
-                    />
-                    {/* Progress circle */}
-                    <Circle
-                        cx={size / 2}
-                        cy={size / 2}
-                        r={radius}
-                        stroke={getProgressColor(consumed, goal)}
-                        strokeWidth={strokeWidth}
-                        fill="transparent"
-                        strokeDasharray={circumference}
-                        strokeDashoffset={strokeDashoffset}
-                        strokeLinecap="round"
-                        transform={`rotate(-90 ${size / 2} ${size / 2})`}
-                    />
-                </Svg>
-                <View style={[styles.ringCenter, { width: size, height: size }]}>
-                    <Text style={[styles.ringText, { color: theme.text }]}>
-                        {consumed}
-                    </Text>
-                    <Text style={[styles.ringSubtext, { color: theme.subText }]}>
-                        /{goal}
-                    </Text>
-                </View>
-            </View>
-        );
-    };
 
     const MacroProgressBar = ({ label, consumed, goal, unit, color }) => {
         const percentage = Math.min((consumed / goal) * 100, 100);
@@ -150,11 +108,16 @@ const DailyNutritionSummary = ({ userId, date }) => {
     };
 
     return (
-        <View style={[styles.container, { backgroundColor: theme.card }]}>
+        <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContainer}
+            style={styles.container}
+        >
             {/* Calorie Summary - Main Focus */}
             <LinearGradient
                 colors={[theme.primary + '20', theme.primary + '10']}
-                style={styles.calorieSection}
+                style={[styles.calorieSection, { backgroundColor: theme.card }]}
             >
                 <View style={styles.calorieHeader}>
                     <View style={styles.calorieInfo}>
@@ -166,9 +129,11 @@ const DailyNutritionSummary = ({ userId, date }) => {
                         </Text>
                     </View>
                     <ProgressRing
-                        consumed={nutrition.calories.consumed}
-                        goal={nutrition.calories.goal}
-                        size={80}
+                        current={nutrition.calories.consumed}
+                        target={nutrition.calories.goal}
+                        size={60}
+                        strokeWidth={6}
+                        animated={true}
                     />
                 </View>
 
@@ -212,7 +177,7 @@ const DailyNutritionSummary = ({ userId, date }) => {
             </LinearGradient>
 
             {/* Macronutrients */}
-            <View style={styles.macrosSection}>
+            <View style={[styles.macrosSection, { backgroundColor: theme.card }]}>
                 <Text style={[styles.sectionTitle, { color: theme.text }]}>
                     Macronutrients
                 </Text>
@@ -263,25 +228,28 @@ const DailyNutritionSummary = ({ userId, date }) => {
                     </Text>
                 </View>
             </View>
-        </View>
+        </ScrollView>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
-        margin: 16,
-        borderRadius: 16,
-        padding: 16,
-        elevation: 4,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        marginVertical: 8,
+    },
+    scrollContainer: {
+        paddingHorizontal: 16,
+        gap: 12,
     },
     calorieSection: {
         borderRadius: 12,
-        padding: 16,
-        marginBottom: 16,
+        padding: 12,
+        marginBottom: 8,
+        width: width * 0.85, // Make cards smaller and scrollable
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
     },
     calorieHeader: {
         flexDirection: 'row',
@@ -329,7 +297,15 @@ const styles = StyleSheet.create({
         marginTop: 2,
     },
     macrosSection: {
-        marginBottom: 16,
+        marginBottom: 8,
+        width: width * 0.75, // Make macro section smaller
+        borderRadius: 12,
+        padding: 16,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
     },
     sectionTitle: {
         fontSize: 18,
@@ -371,6 +347,7 @@ const styles = StyleSheet.create({
         paddingTop: 12,
         borderTopWidth: 1,
         borderTopColor: '#00000010',
+        width: width * 0.75, // Match macrosSection width for consistency
     },
     statItem: {
         alignItems: 'center',

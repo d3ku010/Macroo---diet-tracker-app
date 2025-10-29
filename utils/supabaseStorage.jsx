@@ -121,10 +121,10 @@ export const getMeals = async (date = null) => {
             servingSize: meal.serving_size,
             date: meal.date,
             notes: meal.notes,
-            calories: (meal.foods?.calories || 0) * meal.quantity,
-            protein: (meal.foods?.protein || 0) * meal.quantity,
-            carbs: (meal.foods?.carbs || 0) * meal.quantity,
-            fat: (meal.foods?.fat || 0) * meal.quantity,
+            calories: Math.round((meal.foods?.calories || 0) * meal.quantity / 100),
+            protein: Math.round(((meal.foods?.protein || 0) * meal.quantity / 100) * 10) / 10,
+            carbs: Math.round(((meal.foods?.carbs || 0) * meal.quantity / 100) * 10) / 10,
+            fat: Math.round(((meal.foods?.fat || 0) * meal.quantity / 100) * 10) / 10,
         }));
 
         return convertedMeals;

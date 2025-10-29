@@ -144,12 +144,11 @@ export default function Summary() {
                 <Text style={[styles.title, { color: theme.text }]}>Daily Summary</Text>
 
                 {/* Daily Nutrition Summary */}
-                <View style={styles.section}>
-                    <DailyNutritionSummary
-                        calories={summaryData.calories}
-                        macroNutrients={summaryData.macroNutrients}
-                    />
-                </View>
+                <DailyNutritionSummary
+                    userId="current_user"
+                    date={new Date().toISOString().slice(0, 10)}
+                />
+                <View style={{ marginBottom: 24 }} />
 
                 {/* Daily Calorie Chart */}
                 <View style={styles.section}>

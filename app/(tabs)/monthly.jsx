@@ -1,6 +1,6 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Dimensions, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, Dimensions, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { LineChart } from 'react-native-chart-kit';
 import ResponsiveCard, { StatsCard } from '../../components/layout/ResponsiveCard';
 import ResponsiveLayout from '../../components/layout/ResponsiveLayout';
@@ -166,30 +166,37 @@ export default function MonthlyScreen() {
                     <Text style={[styles.cardTitle, { color: theme.text }]}>📈 Daily Summary</Text>
                 </View>
 
-                <View style={styles.statsGrid}>
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.statsScrollContainer}
+                    style={styles.statsScrollView}
+                >
                     <StatsCard
                         label="🔥 Calories"
                         value={`${dailyTotals.calories} kcal`}
                         color={theme.danger}
+                        style={styles.statsCardFixed}
                     />
                     <StatsCard
                         label="💪 Protein"
                         value={`${dailyTotals.protein} g`}
                         color={theme.success}
+                        style={styles.statsCardFixed}
                     />
                     <StatsCard
                         label="🍞 Carbs"
                         value={`${dailyTotals.carbs} g`}
                         color={theme.primary}
+                        style={styles.statsCardFixed}
                     />
                     <StatsCard
                         label="🥑 Fat"
                         value={`${dailyTotals.fat} g`}
                         color={theme.fat}
+                        style={styles.statsCardFixed}
                     />
-                </View>
-
-                {/* Daily Meals Section */}
+                </ScrollView>                {/* Daily Meals Section */}
                 <View style={styles.dailyMealsSection}>
                     <Text style={[styles.sectionTitle, { color: theme.text }]}>🍽️ Daily Meals</Text>
                     {mealsForSelected.length === 0 ? <Text style={{ marginTop: 8, color: theme.subText }}>No meals for this day.</Text> : (
@@ -269,27 +276,33 @@ export default function MonthlyScreen() {
 
                 {chartData ? (
                     <Animated.View style={[styles.chartCard, { opacity: chartAnim }]}>
-                        <LineChart
-                            data={chartData}
-                            width={Math.max(320, screenWidth - 48)}
-                            height={280}
-                            chartConfig={{
-                                backgroundGradientFrom: theme.card,
-                                backgroundGradientTo: theme.card,
-                                decimalPlaces: 0,
-                                color: (opacity = 1) => theme.primary,
-                                labelColor: (opacity = 1) => theme.subText,
-                                propsForBackgroundLines: { stroke: theme.pillBg },
-                                strokeWidth: 2,
-                            }}
-                            bezier
-                            style={{ borderRadius: 12 }}
-                            withDots={false}
-                            fromZero
-                            yLabelsOffset={6}
-                            yAxisInterval={chartData?.meta?.yStep || 1}
-                            yAxisSuffix=""
-                        />
+                        <ScrollView
+                            horizontal={screenWidth < 380}
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={{ paddingHorizontal: screenWidth < 380 ? 8 : 0 }}
+                        >
+                            <LineChart
+                                data={chartData}
+                                width={Math.max(380, screenWidth - 32)}
+                                height={280}
+                                chartConfig={{
+                                    backgroundGradientFrom: theme.card,
+                                    backgroundGradientTo: theme.card,
+                                    decimalPlaces: 0,
+                                    color: (opacity = 1) => theme.primary,
+                                    labelColor: (opacity = 1) => theme.subText,
+                                    propsForBackgroundLines: { stroke: theme.pillBg },
+                                    strokeWidth: 2,
+                                }}
+                                bezier
+                                style={{ borderRadius: 12 }}
+                                withDots={false}
+                                fromZero
+                                yLabelsOffset={6}
+                                yAxisInterval={chartData?.meta?.yStep || 1}
+                                yAxisSuffix=""
+                            />
+                        </ScrollView>
                     </Animated.View>
                 ) : <Text style={{ color: theme.subText }}>Loading...</Text>}
             </ResponsiveCard>
@@ -352,6 +365,18 @@ const styles = StyleSheet.create({
     },
     navButtonText: {
         fontWeight: '600',
+    },
+    statsScrollView: {
+        marginBottom: 16,
+    },
+    statsScrollContainer: {
+        paddingHorizontal: 4,
+        gap: 12,
+        flexDirection: 'row',
+    },
+    statsCardFixed: {
+        width: screenWidth * 0.4, // Fixed width for horizontal scrolling
+        minWidth: 140, // Minimum width to ensure readability
     },
     statsGrid: {
         flexDirection: screenWidth < 380 ? 'column' : 'row',

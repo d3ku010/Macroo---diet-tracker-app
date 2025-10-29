@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Dimensions, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import ResponsiveCard from '../../components/layout/ResponsiveCard';
 import ResponsiveLayout from '../../components/layout/ResponsiveLayout';
 import PrimaryButton from '../../components/ui/PrimaryButton';
@@ -51,17 +51,40 @@ export default function FoodDbScreen() {
             return;
         }
 
+        // Validate numeric inputs
+        const calories = parseFloat(newCalories);
+        const protein = parseFloat(newProtein);
+        const carbs = parseFloat(newCarbs);
+        const fat = parseFloat(newFat);
+
+        if (isNaN(calories) || calories < 0 || calories > 9000) {
+            toast('Please enter valid calories (0-9000 per 100g)', 'error');
+            return;
+        }
+        if (isNaN(protein) || protein < 0 || protein > 100) {
+            toast('Please enter valid protein (0-100g per 100g)', 'error');
+            return;
+        }
+        if (isNaN(carbs) || carbs < 0 || carbs > 100) {
+            toast('Please enter valid carbs (0-100g per 100g)', 'error');
+            return;
+        }
+        if (isNaN(fat) || fat < 0 || fat > 100) {
+            toast('Please enter valid fat (0-100g per 100g)', 'error');
+            return;
+        }
+
         const newFoodItem = {
-            name: newFood,
-            calories: parseFloat(newCalories),
-            protein: parseFloat(newProtein),
-            carbs: parseFloat(newCarbs),
-            fat: parseFloat(newFat),
+            name: newFood.trim(),
+            calories: Math.round(calories * 10) / 10,
+            protein: Math.round(protein * 10) / 10,
+            carbs: Math.round(carbs * 10) / 10,
+            fat: Math.round(fat * 10) / 10,
         };
 
         await saveFoodToDatabase(newFoodItem);
         await load();
-        toast('Food added to database!', 'success');
+        toast(`🍽️ ${newFoodItem.name} added to database!`, 'success');
         setNewFood('');
         setNewCalories('');
         setNewProtein('');
@@ -81,12 +104,36 @@ export default function FoodDbScreen() {
 
     const handleSaveEdit = async () => {
         if (!editingFood) return;
+
+        // Validate numeric inputs
+        const calories = parseFloat(editCalories);
+        const protein = parseFloat(editProtein);
+        const carbs = parseFloat(editCarbs);
+        const fat = parseFloat(editFat);
+
+        if (editCalories && (isNaN(calories) || calories < 0 || calories > 9000)) {
+            toast('Please enter valid calories (0-9000 per 100g)', 'error');
+            return;
+        }
+        if (editProtein && (isNaN(protein) || protein < 0 || protein > 100)) {
+            toast('Please enter valid protein (0-100g per 100g)', 'error');
+            return;
+        }
+        if (editCarbs && (isNaN(carbs) || carbs < 0 || carbs > 100)) {
+            toast('Please enter valid carbs (0-100g per 100g)', 'error');
+            return;
+        }
+        if (editFat && (isNaN(fat) || fat < 0 || fat > 100)) {
+            toast('Please enter valid fat (0-100g per 100g)', 'error');
+            return;
+        }
+
         const updated = {
-            name: editName || editingFood.name,
-            calories: parseFloat(editCalories) || editingFood.calories,
-            protein: parseFloat(editProtein) || editingFood.protein,
-            carbs: parseFloat(editCarbs) || editingFood.carbs,
-            fat: parseFloat(editFat) || editingFood.fat,
+            name: (editName || editingFood.name).trim(),
+            calories: editCalories ? Math.round(calories * 10) / 10 : editingFood.calories,
+            protein: editProtein ? Math.round(protein * 10) / 10 : editingFood.protein,
+            carbs: editCarbs ? Math.round(carbs * 10) / 10 : editingFood.carbs,
+            fat: editFat ? Math.round(fat * 10) / 10 : editingFood.fat,
         };
         await updateFoodInDatabase(editingFood.id, updated);
         setEditModalVisible(false);
@@ -124,8 +171,17 @@ export default function FoodDbScreen() {
             ) : (
                 foods.map((f, i) => (
                     <ResponsiveCard key={i} size="medium" style={{ marginBottom: 12 }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <View style={{ flex: 1, marginRight: 12 }}>
+                        <ScrollView
+                            horizontal={screenWidth < 320}
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={{
+                                flexDirection: 'row',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                minWidth: '100%'
+                            }}
+                        >
+                            <View style={{ flex: 1, marginRight: 12, minWidth: screenWidth < 320 ? 200 : 'auto' }}>
                                 <Text style={[styles.name, { color: theme.text }]} numberOfLines={2}>{f.name}</Text>
                                 <Text style={[styles.meta, { color: theme.subText }]} numberOfLines={1}>
                                     {f.calories} kcal/100g • P {f.protein} • C {f.carbs} • F {f.fat}
@@ -144,7 +200,7 @@ export default function FoodDbScreen() {
                                     <Ionicons name="trash" size={18} color={theme.danger} />
                                 </TouchableOpacity>
                             </View>
-                        </View>
+                        </ScrollView>
                     </ResponsiveCard>
                 ))
             )}

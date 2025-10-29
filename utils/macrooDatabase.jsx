@@ -45,20 +45,20 @@ class MacrooDatabase {
     async addFood(foodItem, userId = null) {
         try {
             // Check if food already exists for this user
-            const existingFood = await supabase
+            const { data: existingFood, error: checkError } = await supabase
                 .from(TABLES.FOODS)
                 .select('id')
                 .eq('name', foodItem.name)
                 .eq('user_id', userId)
-                .single();
+                .maybeSingle();
 
-            if (existingFood.data) {
-                throw new Error(`Food "${foodItem.name}" already exists for this user`);
+            if (existingFood) {
+                throw new Error(`Food "${foodItem.name}" already exists`);
             }
 
             const foodData = {
                 name: foodItem.name,
-                calories: parseInt(foodItem.calories) || 0,
+                calories: parseFloat(foodItem.calories) || 0,
                 protein: parseFloat(foodItem.protein) || 0,
                 carbs: parseFloat(foodItem.carbs) || 0,
                 fat: parseFloat(foodItem.fat) || 0,
@@ -307,7 +307,7 @@ class MacrooDatabase {
             // Validate and clean water entry data
             const cleanWaterEntry = {
                 user_id: waterEntry.user_id,
-                amount: parseInt(waterEntry.amount) || 250,
+                amount: parseFloat(waterEntry.amount) || 250,
                 date: waterEntry.date,
                 time: waterEntry.time || new Date().toTimeString().split(' ')[0],
             };

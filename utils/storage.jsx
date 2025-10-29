@@ -340,14 +340,22 @@ export const getProfile = async () => {
 export const suggestCalories = (profile) => {
     if (!profile) return null;
     const { weightKg, heightCm, age, gender, activityLevel, goal } = profile;
-    if (!weightKg || !heightCm || !age) return null;
+
+    // Handle different weight field names
+    const weight = weightKg || profile.weight;
+    const height = heightCm || profile.height;
+
+    if (!weight || !height || !age || weight <= 0 || height <= 0 || age <= 0) return null;
 
     let bmr;
     if (gender === 'female') {
-        bmr = 10 * weightKg + 6.25 * heightCm - 5 * age - 161;
+        bmr = 10 * weight + 6.25 * height - 5 * age - 161;
     } else {
-        bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5;
+        bmr = 10 * weight + 6.25 * height - 5 * age + 5;
     }
+
+    // Ensure BMR is reasonable
+    if (bmr < 800 || bmr > 3000) return null;
 
     const activityFactor = {
         sedentary: 1.2,
@@ -357,8 +365,13 @@ export const suggestCalories = (profile) => {
     }[activityLevel] || 1.2;
 
     let maintenance = Math.round(bmr * activityFactor);
-    if (goal === 'lose') maintenance = Math.max(1200, maintenance - 500);
-    if (goal === 'gain') maintenance = maintenance + 300;
+
+    // Apply goal adjustments with safety limits
+    if (goal === 'lose') {
+        maintenance = Math.max(1200, maintenance - 500);
+    } else if (goal === 'gain') {
+        maintenance = Math.min(4000, maintenance + 300);
+    }
 
     return maintenance;
 };

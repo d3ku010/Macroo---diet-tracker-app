@@ -38,6 +38,10 @@ export default function AddMealScreen() {
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [showPhotoCapture, setShowPhotoCapture] = useState(false);
   const [mealPhoto, setMealPhoto] = useState(null);
+  const [showMealConfirmDialog, setShowMealConfirmDialog] = useState(false);
+  const [showWaterConfirmDialog, setShowWaterConfirmDialog] = useState(false);
+  const [pendingMealData, setPendingMealData] = useState(null);
+  const [pendingWaterData, setPendingWaterData] = useState(null);
   const scale = useRef(new Animated.Value(1)).current;
 
 
@@ -79,23 +83,43 @@ export default function AddMealScreen() {
       return;
     }
 
+    const qty = parseFloat(quantity);
+    if (isNaN(qty) || qty <= 0 || qty > 10000) {
+      toast('Please enter a valid quantity (1-10000g)', 'error');
+      return;
+    }
+
     if (!selectedFood) {
       toast('Please select a food', 'error');
       return;
     }
 
-    const qty = parseFloat(quantity);
+    // Prepare meal data and show confirmation dialog
     const nutrients = {
-      calories: (selectedFood.calories * qty) / 100,
-      protein: (selectedFood.protein * qty) / 100,
-      carbs: (selectedFood.carbs * qty) / 100,
-      fat: (selectedFood.fat * qty) / 100,
+      calories: Math.round((selectedFood.calories * qty) / 100),
+      protein: Math.round(((selectedFood.protein * qty) / 100) * 10) / 10,
+      carbs: Math.round(((selectedFood.carbs * qty) / 100) * 10) / 10,
+      fat: Math.round(((selectedFood.fat * qty) / 100) * 10) / 10,
     };
+
+    setPendingMealData({
+      selectedFood,
+      quantity: qty,
+      mealType,
+      nutrients,
+      mealPhoto
+    });
+    setShowMealConfirmDialog(true);
+  };
+
+  const confirmAddMeal = async () => {
+    const { selectedFood, quantity: qty, mealType, nutrients, mealPhoto } = pendingMealData;
 
     // Find the food in Supabase to get its ID
     const foodInDatabase = await findFoodByName(selectedFood.name);
     if (!foodInDatabase) {
       toast('Food not found in database. Please add it first.', 'error');
+      setShowMealConfirmDialog(false);
       return;
     }
 
@@ -109,10 +133,42 @@ export default function AddMealScreen() {
     };
 
     await saveMeal(newMeal);
-    toast('Meal added!', 'success');
+
+    // Generate engaging food confirmation messages
+    const getFoodMessage = (food, quantity, meal, calories) => {
+      const mealEmojis = {
+        breakfast: '🌅',
+        lunch: '☀️',
+        dinner: '🌙',
+        snack: '🍎'
+      };
+
+      const encouragements = [
+        'Nutrition on point!',
+        'Great choice!',
+        'Fueling your goals!',
+        'Smart eating!',
+        'Perfect portion!'
+      ];
+
+      const randomEncouragement = encouragements[Math.floor(Math.random() * encouragements.length)];
+      const mealEmoji = mealEmojis[meal.toLowerCase()] || '🍽️';
+
+      if (calories >= 300) {
+        return `${mealEmoji} ${food} (${quantity}g) added to ${meal}! ${calories} cals - ${randomEncouragement} 💪`;
+      } else if (calories >= 150) {
+        return `${mealEmoji} ${food} (${quantity}g) logged for ${meal}! ${calories} cals - ${randomEncouragement} ⭐`;
+      } else {
+        return `${mealEmoji} ${food} (${quantity}g) tracked as ${meal}! ${calories} cals - ${randomEncouragement} ✨`;
+      }
+    };
+
+    toast(getFoodMessage(selectedFood.name, qty, mealType, nutrients.calories), 'success');
     setQuantity('');
     setSelectedFood(null);
     setMealPhoto(null);
+    setShowMealConfirmDialog(false);
+    setPendingMealData(null);
 
     // Refresh recommendations after adding meal
     loadRecommendations();
@@ -125,7 +181,19 @@ export default function AddMealScreen() {
       return;
     }
 
-    await saveWaterEntry(ml);
+    // Show confirmation dialog
+    setPendingWaterData({ amount: ml });
+    setShowWaterConfirmDialog(true);
+  };
+
+  const confirmAddWater = async () => {
+    const { amount: ml } = pendingWaterData;
+
+    await saveWaterEntry({
+      amount: ml,
+      date: new Date().toISOString().split('T')[0],
+      time: new Date().toTimeString().split(' ')[0]
+    });
 
     // simple scale animation to indicate success
     Animated.sequence([
@@ -133,8 +201,23 @@ export default function AddMealScreen() {
       Animated.timing(scale, { toValue: 1, duration: 160, useNativeDriver: true }),
     ]).start();
 
-    toast(`${ml} ml added`, 'success');
+    // Generate cool and catchy water confirmation messages
+    const getWaterMessage = (amount) => {
+      if (amount >= 500) {
+        return `🌊 Fantastic! ${amount}ml logged - You're crushing your hydration goals! 💪`;
+      } else if (amount >= 300) {
+        return `💦 Great job! ${amount}ml added - Keep that hydration flow going! ✨`;
+      } else if (amount >= 200) {
+        return `🥤 Nice sip! ${amount}ml logged - Every drop counts towards wellness! 🌟`;
+      } else {
+        return `💧 Perfect! ${amount}ml tracked - Small sips, big results! 🎯`;
+      }
+    };
+
+    toast(getWaterMessage(ml), 'success');
     setWaterMl('250');
+    setShowWaterConfirmDialog(false);
+    setPendingWaterData(null);
   };
 
 
@@ -192,12 +275,22 @@ export default function AddMealScreen() {
 
       <ResponsiveCard size="large" style={{ marginBottom: 16 }}>
         <Text style={[styles.label, { color: theme.subText }]}>Meal Type</Text>
-        <Picker selectedValue={mealType} onValueChange={setMealType}>
-          <Picker.Item label="Breakfast" value="Breakfast" />
-          <Picker.Item label="Lunch" value="Lunch" />
-          <Picker.Item label="Dinner" value="Dinner" />
-          <Picker.Item label="Snack" value="Snack" />
-          <Picker.Item label="Other" value="Other" />
+        <Picker
+          selectedValue={mealType}
+          onValueChange={setMealType}
+          style={[styles.picker, {
+            color: theme.text,
+            backgroundColor: theme.card,
+            borderColor: theme.border
+          }]}
+          itemStyle={{ color: theme.text }}
+          dropdownIconColor={theme.text}
+        >
+          <Picker.Item label="Breakfast" value="Breakfast" color={theme.text} />
+          <Picker.Item label="Lunch" value="Lunch" color={theme.text} />
+          <Picker.Item label="Dinner" value="Dinner" color={theme.text} />
+          <Picker.Item label="Snack" value="Snack" color={theme.text} />
+          <Picker.Item label="Other" value="Other" color={theme.text} />
         </Picker>
 
         {/* Recommendations for meal type */}
@@ -462,6 +555,83 @@ export default function AddMealScreen() {
           existingPhoto={mealPhoto}
         />
       </Modal>
+
+      {/* Meal Confirmation Dialog */}
+      <Modal
+        visible={showMealConfirmDialog}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowMealConfirmDialog(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.confirmDialog, { backgroundColor: theme.card }]}>
+            <Text style={[styles.confirmTitle, { color: theme.text }]}>
+              Confirm Meal Log
+            </Text>
+            {pendingMealData && (
+              <View style={styles.confirmContent}>
+                <Text style={[styles.confirmText, { color: theme.subText }]}>
+                  Add {pendingMealData.selectedFood?.name} ({pendingMealData.quantity}g) to {pendingMealData.mealType}?
+                </Text>
+                <Text style={[styles.confirmNutrition, { color: theme.text }]}>
+                  {pendingMealData.nutrients?.calories} calories
+                </Text>
+              </View>
+            )}
+            <View style={styles.confirmButtons}>
+              <TouchableOpacity
+                style={[styles.confirmButton, styles.cancelButton, { backgroundColor: theme.muted }]}
+                onPress={() => setShowMealConfirmDialog(false)}
+              >
+                <Text style={[styles.confirmButtonText, { color: theme.text }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.confirmButton, styles.confirmButtonPrimary, { backgroundColor: theme.primary }]}
+                onPress={confirmAddMeal}
+              >
+                <Text style={[styles.confirmButtonText, { color: theme.onPrimary || '#fff' }]}>Log Meal</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Water Confirmation Dialog */}
+      <Modal
+        visible={showWaterConfirmDialog}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowWaterConfirmDialog(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.confirmDialog, { backgroundColor: theme.card }]}>
+            <Text style={[styles.confirmTitle, { color: theme.text }]}>
+              Confirm Water Log
+            </Text>
+            {pendingWaterData && (
+              <View style={styles.confirmContent}>
+                <Text style={[styles.confirmText, { color: theme.subText }]}>
+                  Add {pendingWaterData.amount}ml of water to your daily intake?
+                </Text>
+              </View>
+            )}
+            <View style={styles.confirmButtons}>
+              <TouchableOpacity
+                style={[styles.confirmButton, styles.cancelButton, { backgroundColor: theme.muted }]}
+                onPress={() => setShowWaterConfirmDialog(false)}
+              >
+                <Text style={[styles.confirmButtonText, { color: theme.text }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.confirmButton, styles.confirmButtonPrimary, { backgroundColor: theme.primary }]}
+                onPress={confirmAddWater}
+              >
+                <Text style={[styles.confirmButtonText, { color: theme.onPrimary || '#fff' }]}>Log Water</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ResponsiveLayout>
   );
 }
@@ -649,5 +819,74 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
     fontStyle: 'italic',
+  },
+  picker: {
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 8,
+    minHeight: 50,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  confirmDialog: {
+    borderRadius: 16,
+    padding: 24,
+    maxWidth: 340,
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  confirmTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  confirmContent: {
+    marginBottom: 24,
+  },
+  confirmText: {
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 8,
+  },
+  confirmNutrition: {
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  confirmButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  confirmButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    opacity: 0.8,
+  },
+  confirmButtonPrimary: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  confirmButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

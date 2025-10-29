@@ -1,14 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
-import { Animated, Dimensions, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { Dimensions, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import MacroRatioPieChart from '../../components/charts/MacroRatioPieChart';
 import { MultiProgressRing, ProgressRing } from '../../components/charts/ProgressRing';
 import DailyNutritionSummary from '../../components/DailyNutritionSummary';
 import HydrationProgress from '../../components/HydrationProgress';
 import ResponsiveCard from '../../components/layout/ResponsiveCard';
 import ResponsiveLayout from '../../components/layout/ResponsiveLayout';
-import PaletteSwitcher from '../../components/ui/PaletteSwitcher';
 import PrimaryButton from '../../components/ui/PrimaryButton';
 import { useTheme } from '../../components/ui/ThemeProvider';
 import { checkMealAchievements, initializeAchievements } from '../../utils/achievements';
@@ -20,7 +19,7 @@ import { toast } from '../../utils/toast';
 const screenWidth = Dimensions.get('window').width;
 
 export default function HomeScreen() {
-  const { theme, toggle } = useTheme();
+  const { theme } = useTheme();
   const [todayMeals, setTodayMeals] = useState([]);
   const [totals, setTotals] = useState({
     calories: 0,
@@ -48,6 +47,12 @@ export default function HomeScreen() {
       }),
       { calories: 0, protein: 0, carbs: 0, fat: 0 }
     );
+
+    // Round totals for consistent display
+    sum.calories = Math.round(sum.calories);
+    sum.protein = Math.round(sum.protein * 10) / 10;
+    sum.carbs = Math.round(sum.carbs * 10) / 10;
+    sum.fat = Math.round(sum.fat * 10) / 10;
 
     setTodayMeals(filtered);
     setTotals(sum);
@@ -120,30 +125,12 @@ export default function HomeScreen() {
 
 
 
-  const anim = useRef(new Animated.Value(0)).current;
 
-  const pressToggle = () => {
-    Animated.sequence([
-      Animated.timing(anim, { toValue: 1, duration: 160, useNativeDriver: true }),
-      Animated.timing(anim, { toValue: 0, duration: 200, useNativeDriver: true })
-    ]).start(() => toggle());
-  };
-
-  const rotation = anim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '220deg'] });
-  const scale = anim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.15] });
 
   return (
     <ResponsiveLayout>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <Text style={[styles.heading, { color: theme.text }]}>Today's Summary</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <PaletteSwitcher compact />
-          <TouchableOpacity onPress={pressToggle} accessibilityLabel="Toggle theme" style={{ padding: 8 }}>
-            <Animated.View style={{ transform: [{ rotate: rotation }, { scale }] }}>
-              <Ionicons name={theme.name === 'dark' ? 'moon' : 'sunny'} size={20} color={theme.primary} />
-            </Animated.View>
-          </TouchableOpacity>
-        </View>
       </View>
 
       {/* MyFitnessPal-Style Daily Summary */}
@@ -154,7 +141,11 @@ export default function HomeScreen() {
 
       <ResponsiveCard size="large">
         {/* Progress Rings Section */}
-        <View style={styles.progressSection}>
+        <ScrollView
+          horizontal={screenWidth < 350}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.progressSection}
+        >
           {recommendedCal && (
             <ProgressRing
               current={totals.calories}
@@ -190,7 +181,7 @@ export default function HomeScreen() {
               },
             ]}
           />
-        </View>
+        </ScrollView>
 
         {/* Macro Pie Chart */}
         <MacroRatioPieChart
@@ -258,38 +249,66 @@ export default function HomeScreen() {
           </ResponsiveCard>
         ) : (
           todayMeals.map((meal) => (
-            <ResponsiveCard key={meal.id} size="medium" style={{ marginBottom: 12 }}>
-              <View style={styles.mealHeaderTop}>
-                <View style={styles.mealTitleLeft}>
-                  <View style={styles.mealTitleRow}>
-                    <View style={[styles.badge, { backgroundColor: theme.pillBg }]}>
-                      <Text style={[styles.badgeText, { color: theme.text }]}>{meal.type}</Text>
+            <ResponsiveCard key={meal.id} size="medium" style={[styles.mealCard, { borderColor: theme.border }]}>
+              {/* Header with food name and actions */}
+              <View style={styles.mealHeader}>
+                <View style={styles.mealInfo}>
+                  <View style={styles.foodNameRow}>
+                    <View style={[styles.mealTypeBadge, { backgroundColor: theme.primaryLight }]}>
+                      <Text style={[styles.mealTypeText, { color: theme.primary }]}>
+                        {meal.mealType?.charAt(0).toUpperCase() + meal.mealType?.slice(1) || 'Meal'}
+                      </Text>
                     </View>
-                    <Text style={[styles.mealTitle, { color: theme.text }]} numberOfLines={2}>
-                      {meal.food}
-                    </Text>
                   </View>
-                </View>
-                <View style={styles.mealRightTop}>
-                  <Text style={[styles.mealQty, { color: theme.text }]} numberOfLines={1}>
-                    {meal.quantity} g • {(meal.nutrients?.calories || 0).toFixed(0)} kcal
+                  <Text style={[styles.foodName, { color: theme.text }]} numberOfLines={2}>
+                    🍽️ {meal.food || meal.foodName}
                   </Text>
-                  <View style={{ flexDirection: 'row', marginTop: 6 }}>
-                    <TouchableOpacity onPress={() => openEditMeal(meal)} style={styles.iconButton} accessibilityLabel="Edit meal">
-                      <Ionicons name="pencil" size={18} color={theme.primary} />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => handleDeleteMeal(meal.id)} style={[styles.iconButton, { marginLeft: 8 }]} accessibilityLabel="Delete meal">
-                      <Ionicons name="trash" size={18} color={theme.danger} />
-                    </TouchableOpacity>
-                  </View>
+                </View>
+                <View style={styles.mealActions}>
+                  <TouchableOpacity onPress={() => openEditMeal(meal)} style={[styles.actionButton, { backgroundColor: theme.primaryLight }]} accessibilityLabel="Edit meal">
+                    <Ionicons name="pencil" size={16} color={theme.primary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleDeleteMeal(meal.id)} style={[styles.actionButton, { backgroundColor: theme.dangerLight || theme.primaryLight, marginLeft: 8 }]} accessibilityLabel="Delete meal">
+                    <Ionicons name="trash" size={16} color={theme.danger} />
+                  </TouchableOpacity>
                 </View>
               </View>
 
-              <View style={styles.macroRowCompact}>
-                <Text style={[styles.macroText, { color: theme.subText }]}>P {(meal.nutrients?.protein || 0).toFixed(1)}g</Text>
-                <Text style={[styles.macroText, { color: theme.subText }]}>C {(meal.nutrients?.carbs || 0).toFixed(1)}g</Text>
-                <Text style={[styles.macroText, { color: theme.subText }]}>F {(meal.nutrients?.fat || 0).toFixed(1)}g</Text>
-                <Text style={[styles.macroTime, { color: theme.subText }]}>{meal.mealType || 'Meal'}</Text>
+              {/* Calorie and quantity info */}
+              <View style={styles.calorieRow}>
+                <View style={styles.calorieInfo}>
+                  <Text style={[styles.calorieCount, { color: theme.primary }]}>
+                    {Math.round(meal.calories || 0)}
+                  </Text>
+                  <Text style={[styles.calorieLabel, { color: theme.subText }]}>kcal</Text>
+                </View>
+                <Text style={[styles.quantityText, { color: theme.subText }]}>
+                  {meal.quantity}g
+                </Text>
+              </View>
+
+              {/* Macro breakdown */}
+              <View style={[styles.macroRow, { borderTopColor: theme.border }]}>
+                <View style={styles.macroItem}>
+                  <Text style={[styles.macroValue, { color: theme.success }]}>
+                    {(meal.protein || 0).toFixed(1)}g
+                  </Text>
+                  <Text style={[styles.macroLabel, { color: theme.subText }]}>Protein</Text>
+                </View>
+                <View style={[styles.macroSeparator, { backgroundColor: theme.border }]} />
+                <View style={styles.macroItem}>
+                  <Text style={[styles.macroValue, { color: theme.primary }]}>
+                    {(meal.carbs || 0).toFixed(1)}g
+                  </Text>
+                  <Text style={[styles.macroLabel, { color: theme.subText }]}>Carbs</Text>
+                </View>
+                <View style={[styles.macroSeparator, { backgroundColor: theme.border }]} />
+                <View style={styles.macroItem}>
+                  <Text style={[styles.macroValue, { color: theme.warning || theme.fat }]}>
+                    {(meal.fat || 0).toFixed(1)}g
+                  </Text>
+                  <Text style={[styles.macroLabel, { color: theme.subText }]}>Fat</Text>
+                </View>
               </View>
             </ResponsiveCard>
           ))
@@ -387,6 +406,103 @@ const styles = StyleSheet.create({
   mealRightTop: { alignItems: 'flex-end', flexShrink: 0 },
   mealQty: { fontWeight: '700', fontSize: screenWidth < 380 ? 12 : 13 },
   macroRowCompact: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
+  // New improved meal card styles
+  mealCard: {
+    marginBottom: 16,
+    borderWidth: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  mealHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  mealInfo: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  foodNameRow: {
+    marginBottom: 6,
+  },
+  mealTypeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  mealTypeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  foodName: {
+    fontSize: 16,
+    fontWeight: '600',
+    lineHeight: 22,
+  },
+  mealActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  actionButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calorieRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  calorieInfo: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  calorieCount: {
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  calorieLabel: {
+    fontSize: 14,
+    marginLeft: 4,
+    fontWeight: '500',
+  },
+  quantityText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  macroRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingTop: 12,
+    borderTopWidth: 1,
+  },
+  macroItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  macroValue: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  macroLabel: {
+    fontSize: 11,
+    marginTop: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  macroSeparator: {
+    width: 1,
+    height: 20,
+    // backgroundColor will be set inline with theme.border
+    opacity: 0.5,
+  },
   progressSection: {
     flexDirection: screenWidth < 380 ? 'column' : 'row',
     justifyContent: 'space-around',

@@ -13,6 +13,7 @@ import {
     View
 } from 'react-native';
 import { borderRadius, shadows, spacing, typography } from '../../utils/responsive';
+import SmoothButton from '../ui/SmoothButton';
 import { useTheme } from '../ui/ThemeProvider';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -181,15 +182,18 @@ export function MenuItem({
     const styles = createStyles(safeTheme);
 
     return (
-        <TouchableOpacity
+        <SmoothButton
+            onPress={onPress}
+            disabled={disabled}
+            animationType="both"
+            scaleValue={0.98}
+            opacityValue={0.7}
+            duration={100}
             style={[
                 styles.menuItem,
                 disabled && styles.menuItemDisabled,
                 style
             ]}
-            onPress={onPress}
-            disabled={disabled}
-            activeOpacity={0.7}
         >
             <View style={styles.menuItemLeft}>
                 {icon && (
@@ -223,7 +227,7 @@ export function MenuItem({
                     {rightContent}
                 </View>
             )}
-        </TouchableOpacity>
+        </SmoothButton>
     );
 }
 

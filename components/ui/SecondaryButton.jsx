@@ -1,29 +1,32 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Animated, Platform, StyleSheet, Text, TouchableWithoutFeedback, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
+import SmoothButton from './SmoothButton';
 import { useTheme } from './ThemeProvider';
 
 export default function SecondaryButton({ title, onPress, style, icon, textStyle, disabled, active = false, activeOpacity = 0.8 }) {
     const { theme } = useTheme();
-    const scale = new Animated.Value(1);
-
-    const pressIn = () => Animated.spring(scale, { toValue: 0.96, useNativeDriver: true, friction: 7 }).start();
-    const pressOut = () => Animated.spring(scale, { toValue: 1, useNativeDriver: true, friction: 7 }).start();
 
     return (
-        <TouchableWithoutFeedback onPressIn={pressIn} onPressOut={pressOut} onPress={onPress} disabled={disabled}>
-            <Animated.View style={[
+        <SmoothButton
+            onPress={onPress}
+            disabled={disabled}
+            animationType="both"
+            scaleValue={0.96}
+            opacityValue={0.85}
+            duration={120}
+            style={[
                 styles.btn,
-                { borderColor: theme.primary, backgroundColor: active ? theme.primary : 'transparent', transform: [{ scale }] },
+                { borderColor: theme.primary, backgroundColor: active ? theme.primary : 'transparent' },
                 active ? (Platform.OS === 'web' ? { boxShadow: `0px 5px 10px ${theme.primary}88` } : { shadowColor: theme.primary, shadowOpacity: 0.85, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 8 }) : null,
                 disabled ? styles.disabled : null,
                 style
-            ]}>
-                {icon ? <Ionicons name={icon} size={16} color={active ? (theme.onPrimary || '#fff') : theme.primary} style={{ marginRight: 8 }} /> : null}
-                <View>
-                    <Text style={[styles.text, { color: active ? (theme.onPrimary || '#fff') : theme.primary }, textStyle]}>{title}</Text>
-                </View>
-            </Animated.View>
-        </TouchableWithoutFeedback>
+            ]}
+        >
+            {icon ? <Ionicons name={icon} size={16} color={active ? (theme.onPrimary || '#fff') : theme.primary} style={{ marginRight: 8 }} /> : null}
+            <View>
+                <Text style={[styles.text, { color: active ? (theme.onPrimary || '#fff') : theme.primary }, textStyle]}>{title}</Text>
+            </View>
+        </SmoothButton>
     );
 }
 

@@ -29,16 +29,14 @@ export default function SplashScreen({ onLoadingComplete }) {
             // Phase 2: Progress bar animation
             Animated.timing(progressAnim, {
                 toValue: 1,
-                duration: 1500,
+                duration: 1200,
                 useNativeDriver: false,
             }),
         ]);
 
         animationSequence.start(() => {
-            // Wait a bit more then complete loading
-            setTimeout(() => {
-                onLoadingComplete();
-            }, 300);
+            // Complete after exactly 2 seconds total
+            onLoadingComplete();
         });
     }, [fadeAnim, scaleAnim, progressAnim, onLoadingComplete]);
 
