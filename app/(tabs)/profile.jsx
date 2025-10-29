@@ -12,11 +12,15 @@ import {
     View
 } from 'react-native';
 import ExportBackupManager from '../../components/forms/ExportBackupManager';
+import ProfileEditForm from '../../components/forms/ProfileEditForm';
+import ProfileSetupWizard from '../../components/forms/ProfileSetupWizard';
 import ResponsiveCard from '../../components/layout/ResponsiveCard';
 import ResponsiveLayout from '../../components/layout/ResponsiveLayout';
+import HealthInsights from '../../components/modern/HealthInsights';
 import HamburgerMenu, { MenuItem, MenuSection } from '../../components/navigation/HamburgerMenu';
 import ThemeDialog from '../../components/ui/ThemeDialog';
 import { useTheme } from '../../components/ui/ThemeProvider';
+import { calculateBMI, getBMICategory } from '../../utils/healthCalculations';
 import { getProfile, saveProfile } from '../../utils/storage';
 
 const ProfileScreen = () => {
@@ -25,6 +29,8 @@ const ProfileScreen = () => {
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showExportModal, setShowExportModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [showSetupWizard, setShowSetupWizard] = useState(false);
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [themeDialogOpen, setThemeDialogOpen] = useState(false);
@@ -39,7 +45,9 @@ const ProfileScreen = () => {
             if (userData) {
                 setProfile(userData);
             } else {
-                // Set default profile
+                // Show setup wizard for new users
+                setShowSetupWizard(true);
+                // Set minimal default profile
                 const defaultProfile = {
                     name: 'User',
                     age: 25,
@@ -52,7 +60,6 @@ const ProfileScreen = () => {
                     dailyWaterTarget: 8,
                 };
                 setProfile(defaultProfile);
-                await saveProfile(defaultProfile);
             }
         } catch (error) {
             console.error('Error loading profile:', error);
@@ -62,11 +69,19 @@ const ProfileScreen = () => {
     };
 
     const showEditProfile = () => {
-        Alert.alert(
-            'Edit Profile',
-            'Profile editing feature coming soon!',
-            [{ text: 'OK' }]
-        );
+        setShowEditModal(true);
+    };
+
+    const handleProfileSave = async (updatedProfile) => {
+        try {
+            await saveProfile(updatedProfile);
+            setProfile(updatedProfile);
+            setShowEditModal(false);
+            Alert.alert('Success', 'Profile updated successfully!');
+        } catch (error) {
+            console.error('Error saving profile:', error);
+            throw error; // Let the form handle the error
+        }
     };
 
     const handleNotificationToggle = (value) => {
@@ -79,6 +94,18 @@ const ProfileScreen = () => {
         loadUserProfile();
         setShowExportModal(false);
         Alert.alert('Success', 'Data imported successfully! Please restart the app to see all changes.');
+    };
+
+    const handleSetupComplete = () => {
+        setShowSetupWizard(false);
+        setShowEditModal(true);
+    };
+
+    const handleSetupSkip = () => {
+        setShowSetupWizard(false);
+        if (profile) {
+            saveProfile(profile);
+        }
     };
 
     const ProfileItem = ({ icon, label, value, onPress, rightElement }) => (
@@ -131,7 +158,9 @@ const ProfileScreen = () => {
                             setIsMenuOpen(false);
                         }}
                     />
-                </MenuSection>                <MenuSection title="Data">
+                </MenuSection>
+
+                <MenuSection title="Data">
                     <MenuItem
                         icon="download-outline"
                         title="Export Data"
@@ -153,7 +182,9 @@ const ProfileScreen = () => {
                         }}
                     />
                 </MenuSection>
-            </HamburgerMenu>            {/* Header */}
+            </HamburgerMenu>
+
+            {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity
                     onPress={() => setIsMenuOpen(true)}
@@ -184,6 +215,15 @@ const ProfileScreen = () => {
                         <Text style={[styles.profileStats, { color: theme.subText }]}>
                             {profile.height}cm • {profile.weight}kg • {profile.age} years
                         </Text>
+                        {profile.height && profile.weight && (() => {
+                            const bmi = calculateBMI(profile.weight, profile.height);
+                            const bmiCategory = getBMICategory(bmi);
+                            return (
+                                <Text style={[styles.profileBMI, { color: bmiCategory.color }]}>
+                                    BMI: {bmi} ({bmiCategory.category})
+                                </Text>
+                            );
+                        })()}
                     </View>
                     <TouchableOpacity onPress={showEditProfile}>
                         <Ionicons name="create-outline" size={24} color={theme.primary} />
@@ -208,7 +248,25 @@ const ProfileScreen = () => {
                     value={`${profile.dailyWaterTarget} glasses`}
                     onPress={showEditProfile}
                 />
-            </ResponsiveCard>                {/* Health Info */}
+
+                <TouchableOpacity
+                    style={[styles.quickEditButton, { backgroundColor: theme.primary + '15', borderColor: theme.primary + '30' }]}
+                    onPress={showEditProfile}
+                >
+                    <Ionicons name="settings-outline" size={16} color={theme.primary} />
+                    <Text style={[styles.quickEditText, { color: theme.primary }]}>
+                        Quick Edit Targets
+                    </Text>
+                </TouchableOpacity>
+            </ResponsiveCard>
+
+            {/* Health Insights */}
+            <HealthInsights
+                profile={profile}
+                onViewMore={() => Alert.alert('Health Insights', 'Detailed health recommendations feature coming soon!')}
+            />
+
+            {/* Health Info */}
             <ResponsiveCard size="medium" style={{ marginBottom: 16 }}>
                 <Text style={[styles.sectionTitle, { color: theme.text }]}>Health Information</Text>
 
@@ -293,6 +351,32 @@ const ProfileScreen = () => {
                 />
             </Modal>
 
+            {/* Profile Setup Wizard */}
+            <Modal
+                visible={showSetupWizard}
+                animationType="slide"
+                presentationStyle="fullScreen"
+            >
+                <ProfileSetupWizard
+                    onComplete={handleSetupComplete}
+                    onSkip={handleSetupSkip}
+                />
+            </Modal>
+
+            {/* Profile Edit Modal */}
+            <Modal
+                visible={showEditModal}
+                animationType="slide"
+                presentationStyle="formSheet"
+            >
+                <ProfileEditForm
+                    profile={profile}
+                    visible={showEditModal}
+                    onSave={handleProfileSave}
+                    onCancel={() => setShowEditModal(false)}
+                />
+            </Modal>
+
             {/* Theme Dialog */}
             <ThemeDialog
                 visible={themeDialogOpen}
@@ -367,6 +451,11 @@ const styles = StyleSheet.create({
     profileStats: {
         fontSize: 12,
     },
+    profileBMI: {
+        fontSize: 12,
+        fontWeight: '500',
+        marginTop: 2,
+    },
     sectionTitle: {
         fontSize: 18,
         fontWeight: '600',
@@ -401,6 +490,20 @@ const styles = StyleSheet.create({
     },
     bottomSpacing: {
         height: 40,
+    },
+    quickEditButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 12,
+        borderRadius: 8,
+        borderWidth: 1,
+        marginTop: 8,
+        gap: 8,
+    },
+    quickEditText: {
+        fontSize: 14,
+        fontWeight: '500',
     },
 });
 

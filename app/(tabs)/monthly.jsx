@@ -196,7 +196,9 @@ export default function MonthlyScreen() {
                         color={theme.fat}
                         style={styles.statsCardFixed}
                     />
-                </ScrollView>                {/* Daily Meals Section */}
+                </ScrollView>
+
+                {/* Daily Meals Section */}
                 <View style={styles.dailyMealsSection}>
                     <Text style={[styles.sectionTitle, { color: theme.text }]}>🍽️ Daily Meals</Text>
                     {mealsForSelected.length === 0 ? <Text style={{ marginTop: 8, color: theme.subText }}>No meals for this day.</Text> : (

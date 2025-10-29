@@ -13,20 +13,20 @@ export default function Summary() {
     const [summaryData, setSummaryData] = useState({
         calories: {
             consumed: 0,
-            goal: 2200,
+            goal: 1950,
             breakfast: 0,
             lunch: 0,
             dinner: 0,
             snacks: 0,
         },
         macroNutrients: {
-            protein: { consumed: 0, goal: 150 },
-            carbs: { consumed: 0, goal: 250 },
-            fat: { consumed: 0, goal: 80 },
+            protein: { consumed: 0, goal: 122 }, // 25% of 1950 calories / 4 cal/g
+            carbs: { consumed: 0, goal: 219 },   // 45% of 1950 calories / 4 cal/g
+            fat: { consumed: 0, goal: 65 },     // 30% of 1950 calories / 9 cal/g
         },
         hydration: {
             current: 0,
-            goal: 2000,
+            goal: 3000, // 12 glasses * 250ml
             maxRecommended: 4000
         }
     });
@@ -38,7 +38,6 @@ export default function Summary() {
     // Refresh data when screen comes into focus
     useFocusEffect(
         React.useCallback(() => {
-            console.log('Summary screen focused, refreshing data...');
             loadSummaryData();
             setRefreshTrigger(prev => prev + 1);
         }, [])
@@ -46,26 +45,13 @@ export default function Summary() {
 
     const loadSummaryData = async () => {
         try {
-            console.log('Loading summary data...');
             // Get today's date
             const today = new Date().toISOString().slice(0, 10);
-            console.log('Today\'s date:', today);
 
             // getMeals() already filters by today's date by default
             const todaysMeals = await getMeals(today);
             const waterEntries = await getWaterEntries(today);
             const profile = await getProfile();
-
-            console.log('Loaded today\'s meals:', todaysMeals.length);
-            console.log('Loaded water entries:', waterEntries.length);
-            console.log('Sample meal data:', todaysMeals[0]);
-            console.log('Today\'s meal details:', todaysMeals.map(m => ({
-                id: m.id,
-                mealType: m.mealType,
-                date: m.date,
-                calories: m.calories,
-                foodName: m.foodName
-            })));
 
             // Calculate calories by meal type
             const mealCalories = {
@@ -102,7 +88,7 @@ export default function Summary() {
             const totalWater = waterEntries.reduce((sum, entry) => sum + (entry.amount || 0), 0);
 
             // Get calorie goal from profile
-            const calorieGoal = profile?.dailyCaloriesTarget || 2200;
+            const calorieGoal = profile?.dailyCaloriesTarget || 1950;
 
             setSummaryData({
                 calories: {
@@ -114,24 +100,15 @@ export default function Summary() {
                     snacks: Math.round(mealCalories.snacks),
                 },
                 macroNutrients: {
-                    protein: { consumed: Math.round(totalProtein), goal: profile?.dailyProteinTarget || 150 },
-                    carbs: { consumed: Math.round(totalCarbs), goal: profile?.dailyCarbsTarget || 250 },
-                    fat: { consumed: Math.round(totalFat), goal: profile?.dailyFatTarget || 80 },
+                    protein: { consumed: Math.round(totalProtein), goal: Math.round(calorieGoal * 0.25 / 4) },
+                    carbs: { consumed: Math.round(totalCarbs), goal: Math.round(calorieGoal * 0.45 / 4) },
+                    fat: { consumed: Math.round(totalFat), goal: Math.round(calorieGoal * 0.30 / 9) },
                 },
                 hydration: {
                     current: Math.round(totalWater),
-                    goal: profile?.dailyWaterTarget || 2000,
+                    goal: (profile?.dailyWaterTarget || 12) * 250, // Convert glasses to ml (default 3000ml)
                     maxRecommended: 4000,
                 },
-            });
-
-            console.log('Final summary data:', {
-                totalCalories,
-                mealCalories,
-                totalProtein,
-                totalCarbs,
-                totalFat,
-                totalWater
             });
         } catch (error) {
             console.error('Failed to load summary data:', error);

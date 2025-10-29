@@ -29,10 +29,11 @@ export default function HomeScreen() {
   });
   const [recommendedCal, setRecommendedCal] = useState(null);
   const [todayWater, setTodayWater] = useState(0);
-  const [profileGoal, setProfileGoal] = useState(2000);
+  const [profileGoal, setProfileGoal] = useState(3000); // Default to 3000ml (12 glasses)
   const [customTargets, setCustomTargets] = useState(null);
   const [nutritionInsights, setNutritionInsights] = useState([]);
   const [showInsights, setShowInsights] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const loadMeals = async () => {
     const today = new Date().toISOString().slice(0, 10);
@@ -72,7 +73,10 @@ export default function HomeScreen() {
     setTodayWater(todaySum);
 
     const prof = await getProfile();
-    if (prof?.dailyWaterGoalMl) setProfileGoal(prof.dailyWaterGoalMl);
+    // Convert glasses to ml (assuming 250ml per glass)
+    // Default to 12 glasses (3000ml) if no profile target is set
+    const waterGoalMl = (prof?.dailyWaterTarget || 12) * 250;
+    setProfileGoal(waterGoalMl);
 
     // Get custom targets or calculate defaults
     const customTargets = await getCustomMacroTargets();
@@ -84,6 +88,9 @@ export default function HomeScreen() {
     // Generate nutrition insights
     const insights = await generateNutritionInsights();
     setNutritionInsights(insights);
+
+    // Trigger refresh for DailyNutritionSummary
+    setRefreshTrigger(prev => prev + 1);
   };
 
   const handleDeleteMeal = async (mealId) => {
@@ -135,6 +142,7 @@ export default function HomeScreen() {
 
       {/* MyFitnessPal-Style Daily Summary */}
       <DailyNutritionSummary
+        key={refreshTrigger}
         userId="current_user"
         date={new Date().toISOString().slice(0, 10)}
       />

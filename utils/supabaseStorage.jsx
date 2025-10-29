@@ -10,8 +10,6 @@ const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001'; // Demo user UUID
 
 export const saveFoodToDatabase = async (foodItem) => {
     try {
-        console.log('🍎 Saving food to Supabase:', foodItem.name);
-
         // Validate food data
         const validation = validateFood(foodItem);
         if (!validation.isValid) {
@@ -20,8 +18,6 @@ export const saveFoodToDatabase = async (foodItem) => {
 
         // Add food to Supabase
         const savedFood = await macrooDatabase.addFood(foodItem, DEMO_USER_ID);
-        console.log('✅ Food saved to Supabase:', savedFood.name);
-
         return savedFood;
     } catch (error) {
         console.error('❌ Error saving food to Supabase:', error);
@@ -31,11 +27,7 @@ export const saveFoodToDatabase = async (foodItem) => {
 
 export const getFoodDatabase = async () => {
     try {
-        console.log('📦 Loading food database from Supabase...');
-
         const foods = await macrooDatabase.getAllFoods(DEMO_USER_ID);
-        console.log(`✅ Loaded ${foods.length} foods from Supabase`);
-
         return foods;
     } catch (error) {
         console.error('❌ Error loading food database:', error);
@@ -45,11 +37,7 @@ export const getFoodDatabase = async () => {
 
 export const updateFoodInDatabase = async (foodId, updatedFood) => {
     try {
-        console.log('📝 Updating food in Supabase:', updatedFood.name);
-
         const updated = await macrooDatabase.updateFood(foodId, updatedFood);
-        console.log('✅ Food updated in Supabase');
-
         return updated;
     } catch (error) {
         console.error('❌ Error updating food:', error);
@@ -59,11 +47,7 @@ export const updateFoodInDatabase = async (foodId, updatedFood) => {
 
 export const deleteFoodFromDatabase = async (foodId) => {
     try {
-        console.log('🗑️ Deleting food from Supabase:', foodId);
-
         await macrooDatabase.deleteFood(foodId);
-        console.log('✅ Food deleted from Supabase');
-
         return true;
     } catch (error) {
         console.error('❌ Error deleting food:', error);
@@ -75,8 +59,6 @@ export const deleteFoodFromDatabase = async (foodId) => {
 
 export const saveMeal = async (mealEntry) => {
     try {
-        console.log('🍽️ Saving meal to Supabase:', mealEntry);
-
         // Convert meal entry format for Supabase
         const supabaseMeal = {
             user_id: DEMO_USER_ID,
@@ -89,8 +71,6 @@ export const saveMeal = async (mealEntry) => {
         };
 
         const savedMeal = await macrooDatabase.addMealEntry(supabaseMeal);
-        console.log('✅ Meal saved to Supabase');
-
         return savedMeal;
     } catch (error) {
         console.error('❌ Error saving meal:', error);
@@ -102,14 +82,10 @@ export const getMeals = async (date = null) => {
     try {
         let meals;
         if (date) {
-            console.log('🍽️ Loading meals from Supabase for date:', date);
             meals = await macrooDatabase.getMealsForDate(date, DEMO_USER_ID);
         } else {
-            console.log('🍽️ Loading all meals from Supabase');
             meals = await macrooDatabase.getAllMeals(DEMO_USER_ID);
         }
-
-        console.log(`✅ Loaded ${meals.length} meals from Supabase`);
 
         // Convert Supabase meal format to app format
         const convertedMeals = meals.map(meal => ({
@@ -136,11 +112,7 @@ export const getMeals = async (date = null) => {
 
 export const deleteMeal = async (mealId) => {
     try {
-        console.log('🗑️ Deleting meal from Supabase:', mealId);
-
         await macrooDatabase.deleteMealEntry(mealId);
-        console.log('✅ Meal deleted from Supabase');
-
         return true;
     } catch (error) {
         console.error('❌ Error deleting meal:', error);
@@ -157,8 +129,6 @@ export const saveWaterEntry = async (waterEntry) => {
             throw new Error('Invalid water amount. Must be a positive number.');
         }
 
-        console.log('💧 Saving water entry to Supabase:', waterEntry.amount + 'ml');
-
         const supabaseWater = {
             user_id: DEMO_USER_ID,
             amount: parseInt(waterEntry.amount), // Ensure it's an integer
@@ -167,8 +137,6 @@ export const saveWaterEntry = async (waterEntry) => {
         };
 
         const saved = await macrooDatabase.addWaterEntry(supabaseWater);
-        console.log('✅ Water entry saved to Supabase');
-
         return saved;
     } catch (error) {
         console.error('❌ Error saving water entry:', error);
@@ -179,8 +147,6 @@ export const saveWaterEntry = async (waterEntry) => {
 export const getWaterEntries = async (date = null) => {
     try {
         const targetDate = date || new Date().toISOString().split('T')[0];
-        console.log('💧 Loading water entries from Supabase for date:', targetDate);
-
         const entries = await macrooDatabase.getWaterEntriesForDate(targetDate, DEMO_USER_ID);
         console.log(`✅ Loaded ${entries.length} water entries from Supabase`);
 
@@ -195,11 +161,7 @@ export const getWaterEntries = async (date = null) => {
 
 export const saveProfile = async (profileData) => {
     try {
-        console.log('👤 Saving profile to Supabase');
-
         const saved = await macrooDatabase.saveUserProfile(DEMO_USER_ID, profileData);
-        console.log('✅ Profile saved to Supabase');
-
         return saved;
     } catch (error) {
         console.error('❌ Error saving profile:', error);
@@ -209,11 +171,7 @@ export const saveProfile = async (profileData) => {
 
 export const getProfile = async () => {
     try {
-        console.log('👤 Loading profile from Supabase');
-
         const profile = await macrooDatabase.getUserProfile(DEMO_USER_ID);
-        console.log('✅ Profile loaded from Supabase');
-
         return profile;
     } catch (error) {
         console.error('❌ Error loading profile:', error);
@@ -246,8 +204,6 @@ export const getNutritionSummary = async (startDate, endDate) => {
         console.log('📊 Loading nutrition summary from Supabase');
 
         const summary = await macrooDatabase.getNutritionSummary(startDate, endDate, DEMO_USER_ID);
-        console.log('✅ Nutrition summary loaded from Supabase');
-
         return summary;
     } catch (error) {
         console.error('❌ Error loading nutrition summary:', error);
@@ -277,7 +233,6 @@ export const updateMeal = async (mealId, updatedMeal) => {
     try {
         console.log('🔄 Updating meal in Supabase:', mealId);
         const updated = await macrooDatabase.updateMealEntry(mealId, updatedMeal);
-        console.log('✅ Meal updated successfully');
         return updated;
     } catch (error) {
         console.error('❌ Error updating meal:', error);
@@ -295,7 +250,6 @@ export const saveMealTemplate = async (template) => {
             ...template,
             user_id: DEMO_USER_ID
         });
-        console.log('✅ Meal template saved successfully');
         return saved;
     } catch (error) {
         console.error('❌ Error saving meal template:', error);
@@ -323,9 +277,7 @@ export const getMealTemplates = async () => {
  */
 export const deleteMealTemplate = async (templateId) => {
     try {
-        console.log('🗑️ Deleting meal template from Supabase:', templateId);
         await macrooDatabase.deleteMealTemplate(templateId);
-        console.log('✅ Meal template deleted successfully');
     } catch (error) {
         console.error('❌ Error deleting meal template:', error);
         throw error;
@@ -392,4 +344,6 @@ export const suggestCalories = (profile) => {
 
 // Export demo user ID for other components that might need it
 export { DEMO_USER_ID };
+
+
 

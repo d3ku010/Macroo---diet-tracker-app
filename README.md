@@ -1,334 +1,142 @@
-# Diet Tracker App - Enhanced Edition
+# Diet Tracker App - Macroo
 
-A comprehensive calorie & meal tracker built with Expo + React Native (Expo Router) featuring advanced nutrition tracking, gamification, and smart recommendations.
+A comprehensive nutrition and meal tracking app built with **Expo + React Native** featuring smart recommendations, gamification, and professional data analytics.
 
-## � Recent Updates & Bug Fixes
+## 🎯 Key Features
 
-### Latest Fixes (October 2025)
-- ✅ **SVG Import Fixes**: Resolved missing react-native-svg component imports in DailyNutritionSummary
-- ✅ **Import System Cleanup**: Converted dynamic require() statements to proper ES6 imports
-- ✅ **Supabase Integration**: Standardized data field mappings for consistent database operations
-- ✅ **Web Compatibility**: Enhanced React Native Web support with proper component imports
-- ✅ **Error Handling**: Improved error boundaries and user feedback systems
-- ⚠️ **Metro Bundler Logs**: `<anonymous>` file errors persist but don't affect functionality
+- **Smart Meal Logging**: Advanced food search, barcode scanning, meal templates
+- **Profile-Based Targets**: Personalized calorie and water goals with health insights
+- **Visual Progress Tracking**: Interactive charts, progress rings, macro breakdowns
+- **Achievement System**: Daily streaks, weekly challenges, milestone rewards
+- **Photo Documentation**: Capture meals with camera integration
+- **Data Export/Backup**: JSON, CSV, and summary report generation
+- **AI Recommendations**: Smart food suggestions based on nutrition gaps
 
-### 📋 Complete Documentation
-**See [DOCUMENTATION.md](./DOCUMENTATION.md) for comprehensive project details including architecture, API references, database schema, and development workflows.**
+## 🚀 Recent Updates (October 2025)
 
-## 🚀 Major Enhancement Categories
+- ✅ **Profile Integration**: Daily calorie/water targets now sync across all screens
+- ✅ **Meal Refresh**: Real-time updates when adding/editing meals
+- ✅ **Consistent Defaults**: 1950 cal / 3000ml (12 glasses) recommended targets
+- ✅ **Import Fixes**: Resolved SVG and component import issues
+- ✅ **Database Standardization**: Unified Supabase field mappings
 
-This app has been completely redesigned with 6 major enhancement categories:
+## �️ Quick Start
 
-### 1. ✅ **File Standardization & Organization**
-- All files converted to `.jsx` format with proper component structure
-- Organized component hierarchy: `charts/`, `forms/`, `ui/`
-- Comprehensive PropTypes validation system
-- Enhanced error handling throughout the application
+### Prerequisites
+- **Node.js 18.x** (recommended for compatibility)
+- **Expo CLI** latest version
+- **Mobile device** with Expo Go app
 
-### 2. ✅ **Advanced Visualizations**
-- **Progress Rings**: Daily macro targets vs consumed with visual indicators
-- **Weekly/Monthly Charts**: Trend analysis showing progress over time
-- **Interactive Tooltips**: Detailed breakdown in chart visualizations
-- **Macro Pie Charts**: Nutritional balance visualization
-- **Goal Tracking**: Visual progress indicators for all targets
+### Installation
+```bash
+# Install dependencies
+npm install
 
-### 3. ✅ **Smart Features**
-- **Food Search & Filtering**: Advanced search with sorting capabilities
-- **Meal Templates**: Save and reuse favorite meal combinations
-- **Photo Integration**: Capture photos of meals for documentation
-- **Barcode Scanning**: Scan product barcodes for instant nutrition data
-- **Export/Backup**: Comprehensive data management and sharing
+# Start development server
+npm start
 
-### 4. ✅ **AI-Powered Nutrition Engine**
-- **Meal Timing Analysis**: Insights into eating patterns and optimization
-- **Custom Macro Targets**: Based on fitness goals and user profile
-- **Food Recommendation System**: AI-driven suggestions based on nutrition gaps
-- **Personalized Insights**: Smart recommendations for nutritional improvement
+# For network issues, use tunnel mode
+npx expo start --tunnel -c
+```
 
-### 5. ✅ **Gamification System**
-- **Achievement System**: 10+ achievements across consistency, hydration, nutrition
-- **Weekly Challenges**: Rotating challenges (hydration, protein, vegetables)
-- **Progress Tracking**: Milestone rewards and streak tracking
-- **Progress Sharing**: Export summaries and progress images
+### Usage
+1. **Scan QR code** with Expo Go app on your phone
+2. **Web version**: Access at `http://localhost:8082`
+3. **Set up profile** with your health goals and targets
+4. **Start logging meals** using search, templates, or barcode scanning
 
-### 6. ✅ **Enhanced User Experience**
-- **Multiple Input Modes**: Search, Templates, Barcode scanning
-- **Smart Recommendations**: Context-aware food suggestions
-- **Data Portability**: Complete export/import functionality
-- **Professional UI**: Polished interface with comprehensive error handling
+## 📱 Core Functionality
 
-## 📱 Key Features
+### Meal Tracking
+- **Food Database**: Comprehensive nutrition info (calories, protein, carbs, fat)
+- **Multiple Input Methods**: Search, templates, barcode scanning
+- **Photo Documentation**: Capture meal images
+- **Smart Quantities**: Automatic nutrition calculations
 
-### Core Functionality
-- **Food Database**: Maintain detailed nutrition information (calories, protein, carbs, fat per 100g)
-- **Meal Logging**: Track meals with quantities and automatic nutrition calculation
-- **Water Tracking**: Monitor daily hydration with progress indicators
-- **Daily Summaries**: Comprehensive nutrition breakdown with visual charts
+### Progress Analytics
+- **Daily Summaries**: Real-time nutrition breakdown
+- **Visual Charts**: Progress rings, pie charts, trend analysis
+- **Goal Tracking**: Calorie, water, and macro targets
+- **Historical Data**: Weekly and monthly progress views
 
-### Advanced Features
-- **Photo Documentation**: Capture and store meal photos
-- **Barcode Integration**: Scan products for instant nutrition lookup
-- **Template System**: Save frequently eaten meals for quick logging
-- **Search & Filter**: Advanced food search with multiple sorting options
-- **Achievement System**: Gamified progress tracking with rewards
-- **Weekly Challenges**: Rotating nutrition and consistency challenges
-- **Export/Backup**: JSON, CSV, and summary report generation
-- **Smart Recommendations**: AI-powered food suggestions based on nutrition gaps
+### Gamification
+- **Achievement System**: Unlock badges for consistency and milestones
+- **Weekly Challenges**: Rotating nutrition and hydration challenges
+- **Streak Tracking**: Daily logging consistency rewards
+- **Progress Sharing**: Export summaries and achievements
 
-### Visualization & Analytics
-- **Progress Rings**: Visual macro target tracking
-- **Trend Charts**: Weekly and monthly progress analysis
-- **Pie Charts**: Macro distribution visualization
-- **Interactive Tooltips**: Detailed data breakdowns
-- **Achievement Progress**: Visual milestone tracking
+## 🏗️ Architecture
 
-## 🛠️ Installation & Setup
+### Tech Stack
+- **Framework**: Expo SDK 51 + React Native
+- **Navigation**: Expo Router (file-based routing)
+- **Database**: Supabase integration with local AsyncStorage
+- **Charts**: React Native Chart Kit with custom components
+- **Camera**: Expo Camera for barcode scanning and photos
 
-### Requirements
-- **Node.js**: 18.x recommended (18.18.0 tested) - Required for optimal compatibility
-- **Expo CLI**: Latest version for SDK 54 compatibility
-- **Mobile Device**: iOS/Android with Expo Go app installed
-- **Web Browser**: For web version testing and development
+### Project Structure
+```
+app/(tabs)/          # Main app screens
+├── index.jsx        # Home dashboard with progress rings
+├── add-meal.jsx     # Multi-mode meal logging
+├── monthly.jsx      # Analytics and trends
+├── profile.jsx      # User profile and settings
+└── food-db.jsx      # Food database management
 
-### Key Dependencies & Features
-The app includes these essential dependencies for full functionality:
-- `react-native-svg` - Progress rings and custom graphics (recently fixed imports)
-- `@supabase/supabase-js` - Database integration with standardized field mapping
-- `expo-camera` - Camera functionality for meal photos
-- `expo-image-picker` - Image selection capabilities
-- `expo-document-picker` - File import functionality
-- `expo-file-system` - File operations and storage
-- `expo-sharing` - Data export and sharing
-- `react-native-chart-kit` - Advanced chart visualizations
-- `prop-types` - Runtime type validation
+components/          # Reusable components
+├── charts/          # Progress rings, pie charts, trend charts
+├── forms/           # Food search, barcode scanner, templates
+├── ui/              # Theme provider, buttons, controls
+└── layout/          # Responsive layout components
 
-### Quick Start
+utils/               # Business logic
+├── achievements/    # Achievement system and challenges
+├── recommendations/ # AI-powered food suggestions
+├── supabaseClient.jsx # Database operations
+├── storage.jsx      # Local data persistence
+└── healthCalculations.js # BMI, calorie, water calculations
+```
 
-1. **Install Dependencies**
-   ```powershell
-   npm install
-   ```
+## 🎨 Features Breakdown
 
-2. **Start Development Server**
-   ```powershell
-   # Recommended command (clears cache and handles port conflicts)
-   npm start
-   
-   # Alternative for mobile testing (avoids network issues)
-   npx expo start --tunnel -c
-   
-   # For same-network testing
-   npx expo start -c
-   ```
-
-3. **Run on Device**
-   - Install **Expo Go** app on your mobile device
-   - Scan the QR code from the Metro bundler
-   - **Web Version**: Access at `http://localhost:8082` (or assigned port)
-   - If connection fails, use `--tunnel` mode
-
-### Camera Permissions
-The app requires camera and photo library permissions for:
-- Meal photo capture
-- Barcode scanning functionality
-- Photo import from gallery
-
-Permissions are requested automatically when accessing camera features.
-
-## 🎯 Usage Guide
-
-### Adding Meals
-1. **Search Mode**: Use the enhanced search to find foods with filtering options
-2. **Template Mode**: Quick access to saved meal combinations
-3. **Barcode Mode**: Scan product barcodes for instant nutrition lookup
-4. **Photo Documentation**: Capture meal photos for visual tracking
-
-### Viewing Progress
-- **Home Screen**: Daily progress rings showing macro targets vs consumed
-- **Charts**: Interactive visualizations with detailed tooltips  
-- **Achievements**: Track your consistency and nutrition milestones
-- **Monthly View**: Analyze trends and patterns over time
+### Smart Recommendations
+- **AI-Powered Insights**: Nutrition gap analysis and suggestions
+- **Meal Timing Analysis**: Optimize eating patterns
+- **Custom Macro Targets**: Based on fitness goals and profile
+- **Food Recommendations**: Context-aware suggestions
 
 ### Data Management
 - **Export Options**: JSON backup, CSV reports, nutrition summaries
-- **Import Data**: Restore from backup files
-- **Templates**: Save frequently eaten meals
-- **Achievements**: Unlock rewards for consistent tracking
+- **Import Functionality**: Restore from backup files
+- **Template System**: Save frequently eaten meal combinations
+- **Photo Storage**: Meal documentation with image compression
 
-### Gamification Features
-- **Daily Streaks**: Track consecutive days of logging
-- **Weekly Challenges**: Rotating challenges for hydration, nutrition, consistency
-- **Achievement System**: Unlock badges for milestones
-- **Progress Sharing**: Export summaries to share your progress
-
-## 🏗️ Architecture Overview
-
-### Design Patterns
-- **Expo Router**: File-based routing system for navigation
-- **Component Architecture**: Modular design with reusable components
-- **Theme System**: Dynamic theming with palette switching
-- **Local-First**: All data stored on device using AsyncStorage
-- **Type Safety**: PropTypes validation throughout the application
+### User Experience
+- **Theme System**: Multiple color palettes with dark/light modes
+- **Responsive Design**: Optimized for various screen sizes
 - **Error Handling**: Comprehensive error boundaries and user feedback
+- **Performance**: Lazy loading and optimized rendering
 
-### Data Flow
-- **Storage Layer**: Enhanced AsyncStorage with error handling
-- **Recommendation Engine**: AI-powered nutrition analysis
-- **Achievement System**: Progress tracking with milestone detection  
-- **Export System**: Multiple format support (JSON, CSV, Text)
+## � Troubleshooting
 
-### Performance Features
-- **Lazy Loading**: Components loaded on demand
-- **Optimized Charts**: Efficient rendering with react-native-chart-kit
-- **Image Optimization**: Compressed photos with expo-image
-- **Background Processing**: Async operations for smooth UX
+### Common Issues
+- **Connection Problems**: Use `npx expo start --tunnel -c` for network issues
+- **Cache Issues**: Clear Metro cache with `npx expo start -c`
+- **Permission Errors**: Camera/photo permissions required for full functionality
 
----
-
-## 🚀 What's New in Enhanced Edition
-
-This version represents a complete transformation of the original diet tracker with:
-
-- **6x More Features**: From basic tracking to comprehensive nutrition management
-- **Professional UI**: Polished interface with advanced visualizations
-- **Smart Technology**: AI recommendations and pattern analysis  
-- **Gamification**: Achievement system with weekly challenges
-- **Data Portability**: Complete export/import functionality
-- **Camera Integration**: Photo documentation and barcode scanning
-- **Type Safety**: Comprehensive validation and error handling
-
-Perfect for users who want more than just basic calorie counting - this is a complete nutrition management platform!
-
-## 📁 Project Structure
-
-### Core App Files
-- `app/(tabs)/_layout.jsx` — Enhanced tab layout with new navigation
-- `app/(tabs)/index.jsx` — Home screen with progress rings, charts, and insights
-- `app/(tabs)/add-meal.jsx` — Multi-mode meal logging (Search/Templates/Barcode)
-- `app/(tabs)/monthly.jsx` — Advanced analytics with trend charts
-- `app/(tabs)/food-db.jsx` — Enhanced food database management
-- `app/(tabs)/profile.jsx` — Comprehensive profile with export/backup functionality
-
-### Component Architecture
-```
-components/
-├── charts/
-│   ├── DailyCalorieChart.jsx     # Enhanced with interactive tooltips
-│   ├── MacroRatioPieChart.jsx    # Nutrition distribution visualization
-│   ├── ProgressRing.jsx          # Single & multi-metric progress rings
-│   └── WeeklyMonthlyChart.jsx    # Trend analysis charts
-├── forms/
-│   ├── BarcodeScanner.jsx        # Product barcode scanning
-│   ├── ExportBackupManager.jsx   # Data management interface
-│   ├── FoodSearchForm.jsx        # Advanced food search & filtering
-│   ├── MealPhotoCapture.jsx      # Photo capture functionality
-│   └── MealTemplateForm.jsx      # Template management system
-└── ui/
-    ├── PaletteSwitcher.jsx       # Theme palette selection
-    ├── PrimaryButton.jsx         # Enhanced button components
-    ├── SegmentedControl.jsx      # Mode selection controls
-    ├── ThemeProvider.jsx         # Theme & palette management
-    └── Toast.js                  # Notification system
-```
-
-### Utility Systems
-```
-utils/
-├── achievements/
-│   ├── index.jsx                 # Achievement system engine
-│   └── weeklyChallenges.jsx     # Weekly challenge rotation
-├── recommendations/
-│   └── index.jsx                # AI recommendation engine
-├── exportUtils.jsx              # Data export/import functionality
-├── notifications.js             # Notification management
-├── storage.js                   # Enhanced data persistence
-└── toast.js                     # User feedback system
-```
-
-### Type System
-- `types/index.jsx` — Comprehensive PropTypes definitions and validation
-- `utils/storage.js` — AsyncStorage helpers (food & meal persistence)
-
-## 🔧 Troubleshooting
-
-### Common Issues & Solutions
-
-#### Metro Bundler Issues
-- **ENOENT `<anonymous>` file errors**: ⚠️ Ongoing issue - App functions normally but shows repeated error logs
-  - These errors don't affect app functionality
-  - Related to Metro's source mapping system during development
-  - Use `npx expo start -c` to clear cache if needed
-- **Missing SVG components**: ✅ Fixed by adding proper `react-native-svg` imports
-- **Dynamic require() errors**: ✅ Converted to ES6 imports for better compatibility
-
-#### Expo Go Connection Issues  
-- **"Failed to download remote update"**: Use `npx expo start --tunnel -c` to avoid network issues
-- **USB Android debugging**: Run `adb reverse tcp:8081 tcp:8081`
-- **Port conflicts**: App automatically detects and uses available ports (e.g., 8082)
-
-#### Package Version Compatibility
-- **Dependency warnings**: The following packages may show version mismatches but are functional:
-  - `expo-image@3.0.8` (expected: ~3.0.9)
-  - `react-native-worklets@0.6.0` (expected: 0.5.1)
-  - `@types/react@19.0.14` (expected: ~19.1.10)
-  - `eslint-config-expo@9.2.0` (expected: ~10.0.0)
-  - `typescript@5.8.3` (expected: ~5.9.2)
-
-#### Development Environment
-- **Node.js compatibility**: Use Node 18.x for best results
-- **Missing dependencies**: Run `npm install @emnapi/core` if needed
-- **Custom dev client**: For native module updates, consider EAS build with `--profile development`
-
-## 🚀 Development Status
-
-### Current State
-- ✅ **App Functional**: All core features working properly
-- ✅ **Web Version**: Successfully accessible at `http://localhost:8082`
-- ✅ **Mobile Ready**: Compatible with Expo Go on iOS/Android
-- ✅ **Error-Free Bundling**: Metro bundler compiles successfully
-- ⚠️ **Package Versions**: Minor version mismatches with Expo SDK (non-critical)
-
-### Git Repository Setup
-```powershell
-# Initialize repository (if needed)
-git init
-git add .
-git commit -m "Diet tracker app with recent bug fixes"
-
-# Push to remote repository  
-git remote add origin <your-repo-url>
-git branch -M main
-git push -u origin main
-```
-
-### Development Commands
-```powershell
-# Start development server (recommended)
-npm start
-
-# Clear cache and restart
-npx expo start -c
-
-# Tunnel mode for network issues
-npx expo start --tunnel -c
-
-# Web development
-npx expo start --web
-```
+### Package Compatibility
+- Some dependency version mismatches are present but non-critical
+- App functions normally despite Metro bundler warning logs
+- Use Node.js 18.x for optimal compatibility
 
 ## 📚 Additional Resources
 
-### Complete Project Documentation
-For comprehensive project information, see **[DOCUMENTATION.md](./DOCUMENTATION.md)** which includes:
-- **Detailed Architecture**: Complete technical implementation details
-- **Component Documentation**: API references for all components
-- **Database Schema**: Full data structure documentation
-- **Development Workflow**: Detailed development and deployment processes
-- **Future Roadmap**: Planned enhancements and feature additions
-- **Troubleshooting Guide**: Extended issue resolution strategies
+- **Complete Documentation**: See [DOCUMENTATION.md](./DOCUMENTATION.md) for technical details
+- **Database Setup**: See [database/DATABASE_SETUP_GUIDE.md](./database/DATABASE_SETUP_GUIDE.md)
+- **Error Handling**: See [ERROR_HANDLING_DOCS.md](./ERROR_HANDLING_DOCS.md)
 
-### External Resources
-- **Expo Documentation**: [docs.expo.dev](https://docs.expo.dev)
-- **React Native Guide**: [reactnative.dev](https://reactnative.dev)
-- **Supabase Documentation**: [supabase.com/docs](https://supabase.com/docs)
-- **React Native Chart Kit**: [github.com/indiespirit/react-native-chart-kit](https://github.com/indiespirit/react-native-chart-kit)
+---
+
+**Perfect for users who want comprehensive nutrition management beyond basic calorie counting!**
+
+Built with ❤️ using Expo and React Native

@@ -1,11 +1,11 @@
 import {
     KeyboardAvoidingView,
     Platform,
-    SafeAreaView,
     ScrollView,
     StyleSheet,
     View
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { spacing } from '../../utils/responsive';
 import { useTheme } from '../ui/ThemeProvider';
 

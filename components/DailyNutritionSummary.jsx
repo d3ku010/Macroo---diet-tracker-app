@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import { Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { getMeals, getProfile } from '../utils/supabaseStorage';
+import { getMeals, getProfile, getWaterEntries } from '../utils/supabaseStorage';
 import { ProgressRing } from './charts/ProgressRing';
 import { useTheme } from './ui/ThemeProvider';
 
@@ -12,7 +12,7 @@ const { width } = Dimensions.get('window');
 const DailyNutritionSummary = ({ userId, date }) => {
     const { theme } = useTheme();
     const [nutrition, setNutrition] = useState({
-        calories: { consumed: 0, goal: 2000, remaining: 2000 },
+        calories: { consumed: 0, goal: 1950, remaining: 1950 },
         protein: { consumed: 0, goal: 150 },
         carbs: { consumed: 0, goal: 250 },
         fat: { consumed: 0, goal: 67 },
@@ -20,7 +20,7 @@ const DailyNutritionSummary = ({ userId, date }) => {
         sugar: { consumed: 0, goal: 50 },
         sodium: { consumed: 0, goal: 2300 },
     });
-    const [waterIntake, setWaterIntake] = useState({ consumed: 0, goal: 2000 });
+    const [waterIntake, setWaterIntake] = useState({ consumed: 0, goal: 3000 });
 
     useEffect(() => {
         loadDailyNutrition();
@@ -29,8 +29,11 @@ const DailyNutritionSummary = ({ userId, date }) => {
     const loadDailyNutrition = async () => {
         // Implementation to calculate daily nutrition from meals
         try {
-            const meals = await getMeals(date); // Pass date to get only meals for that date
-            const profile = await getProfile();
+            const [meals, profile, waterEntries] = await Promise.all([
+                getMeals(date), // Pass date to get only meals for that date
+                getProfile(),
+                getWaterEntries(date) // Get water entries for the specific date
+            ]);
 
             // Use all meals since we already filtered by date
             const todaysMeals = meals;
@@ -44,24 +47,43 @@ const DailyNutritionSummary = ({ userId, date }) => {
                 return acc;
             }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
 
+            // Calculate water intake
+            const totalWaterMl = waterEntries.reduce((total, entry) => total + (entry.amount || 0), 0);
+
+            // Convert profile water target from glasses to ml (assuming 250ml per glass)
+            // Default to 12 glasses (3000ml) if no profile target is set
+            const waterGoalMl = (profile?.dailyWaterTarget || 12) * 250;
+
+            // Calculate macro targets from calorie target (standard ratios)
+            // Default to 1950 calories if no profile target is set
+            const calorieGoal = profile?.dailyCaloriesTarget || 1950;
+            const proteinGoal = Math.round(calorieGoal * 0.25 / 4); // 25% of calories from protein (4 cal/g)
+            const carbsGoal = Math.round(calorieGoal * 0.45 / 4); // 45% of calories from carbs (4 cal/g)
+            const fatGoal = Math.round(calorieGoal * 0.30 / 9); // 30% of calories from fat (9 cal/g)
+
             setNutrition({
                 calories: {
                     consumed: Math.round(totals.calories),
-                    goal: profile?.dailyCaloriesTarget || 2000,
-                    remaining: Math.max(0, (profile?.dailyCaloriesTarget || 2000) - totals.calories)
+                    goal: calorieGoal,
+                    remaining: Math.max(0, calorieGoal - totals.calories)
                 },
                 protein: {
                     consumed: Math.round(totals.protein),
-                    goal: profile?.dailyProteinTarget || 150
+                    goal: proteinGoal
                 },
                 carbs: {
                     consumed: Math.round(totals.carbs),
-                    goal: profile?.dailyCarbsTarget || 250
+                    goal: carbsGoal
                 },
                 fat: {
                     consumed: Math.round(totals.fat),
-                    goal: profile?.dailyFatTarget || 67
+                    goal: fatGoal
                 },
+            });
+
+            setWaterIntake({
+                consumed: Math.round(totalWaterMl),
+                goal: waterGoalMl
             });
         } catch (error) {
             console.error('Failed to load daily nutrition:', error);
