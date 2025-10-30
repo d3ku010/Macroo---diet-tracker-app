@@ -1,16 +1,23 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef } from 'react';
 import { Animated, Dimensions, StyleSheet, Text, View } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
-export default function SplashScreen({ onLoadingComplete }) {
+export default function SplashScreen({
+    loading = true,
+    progress = 0,
+    message = 'Loading...',
+    error = null,
+    onLoadingComplete,
+    onRetry,
+    onFactoryReset
+}) {
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const scaleAnim = useRef(new Animated.Value(0.3)).current;
     const progressAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        // Start the animation sequence
+        // Start the initial animation sequence
         const animationSequence = Animated.sequence([
             // Phase 1: Fade in and scale up logo
             Animated.parallel([
@@ -25,26 +32,71 @@ export default function SplashScreen({ onLoadingComplete }) {
                     friction: 7,
                     useNativeDriver: true,
                 }),
-            ]),
-            // Phase 2: Progress bar animation
-            Animated.timing(progressAnim, {
-                toValue: 1,
-                duration: 1200,
-                useNativeDriver: false,
-            }),
+            ])
         ]);
 
-        animationSequence.start(() => {
-            // Complete after exactly 2 seconds total
-            onLoadingComplete();
-        });
-    }, [fadeAnim, scaleAnim, progressAnim, onLoadingComplete]);
+        animationSequence.start();
+    }, [fadeAnim, scaleAnim]);
+
+    // Update progress animation when progress changes
+    useEffect(() => {
+        Animated.timing(progressAnim, {
+            toValue: progress / 100,
+            duration: 300,
+            useNativeDriver: false,
+        }).start();
+    }, [progress, progressAnim]);
+
+    // Handle completion
+    useEffect(() => {
+        if (!loading && !error && progress >= 100) {
+            const timer = setTimeout(() => {
+                onLoadingComplete?.();
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [loading, error, progress, onLoadingComplete]);
+
+    // Render error state
+    if (error) {
+        return (
+            <View style={styles.container}>
+                <View style={styles.content}>
+                    <Animated.View
+                        style={[
+                            styles.logoContainer,
+                            {
+                                opacity: fadeAnim,
+                                transform: [{ scale: scaleAnim }],
+                            },
+                        ]}
+                    >
+                        <View style={[styles.logoCircle, styles.errorCircle]}>
+                            <Text style={styles.logoText}>⚠️</Text>
+                        </View>
+                        <Text style={styles.appName}>Initialization Failed</Text>
+                        <Text style={styles.errorMessage}>{error.message || 'Something went wrong'}</Text>
+                    </Animated.View>
+
+                    <View style={styles.errorActions}>
+                        {onRetry && (
+                            <TouchableOpacity style={styles.retryButton} onPress={onRetry}>
+                                <Text style={styles.retryButtonText}>Try Again</Text>
+                            </TouchableOpacity>
+                        )}
+                        {onFactoryReset && (
+                            <TouchableOpacity style={styles.resetButton} onPress={onFactoryReset}>
+                                <Text style={styles.resetButtonText}>Reset App</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                </View>
+            </View>
+        );
+    }
 
     return (
-        <LinearGradient
-            colors={['#8B5CF6', '#7C3AED', '#6D28D9']}
-            style={styles.container}
-        >
+        <View style={styles.container}>
             <View style={styles.content}>
                 {/* Logo and App Name */}
                 <Animated.View
@@ -65,7 +117,7 @@ export default function SplashScreen({ onLoadingComplete }) {
 
                 {/* Loading Progress */}
                 <Animated.View style={[styles.loadingContainer, { opacity: fadeAnim }]}>
-                    <Text style={styles.loadingText}>Loading your nutrition data...</Text>
+                    <Text style={styles.loadingText}>{message}</Text>
                     <View style={styles.progressBarContainer}>
                         <Animated.View
                             style={[
@@ -79,6 +131,7 @@ export default function SplashScreen({ onLoadingComplete }) {
                             ]}
                         />
                     </View>
+                    <Text style={styles.progressText}>{Math.round(progress)}%</Text>
                 </Animated.View>
             </View>
 
@@ -86,7 +139,7 @@ export default function SplashScreen({ onLoadingComplete }) {
             <Animated.View style={[styles.footer, { opacity: fadeAnim }]}>
                 <Text style={styles.versionText}>v1.0.0</Text>
             </Animated.View>
-        </LinearGradient>
+        </View>
     );
 }
 
@@ -95,6 +148,7 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+        backgroundColor: '#007AFF',
     },
     content: {
         flex: 1,
@@ -170,6 +224,50 @@ const styles = StyleSheet.create({
     },
     versionText: {
         color: 'rgba(255, 255, 255, 0.6)',
+        fontSize: 14,
+        textAlign: 'center',
+    },
+    progressText: {
+        color: 'rgba(255, 255, 255, 0.8)',
+        fontSize: 14,
+        marginTop: 12,
+        textAlign: 'center',
+    },
+    errorCircle: {
+        backgroundColor: 'rgba(255, 59, 48, 0.2)',
+    },
+    errorMessage: {
+        fontSize: 16,
+        color: 'rgba(255, 255, 255, 0.8)',
+        textAlign: 'center',
+        marginTop: 8,
+        lineHeight: 22,
+    },
+    errorActions: {
+        alignItems: 'center',
+        marginTop: 40,
+    },
+    retryButton: {
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        paddingHorizontal: 32,
+        paddingVertical: 16,
+        borderRadius: 25,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+    },
+    retryButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '600',
+        textAlign: 'center',
+    },
+    resetButton: {
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+    },
+    resetButtonText: {
+        color: 'rgba(255, 255, 255, 0.7)',
         fontSize: 14,
         textAlign: 'center',
     },

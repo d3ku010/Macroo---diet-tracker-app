@@ -1,0 +1,483 @@
+# GitHub Actions Workflow for Diet Tracker App
+# Comprehensive CI/CD pipeline with automated testing, building, and deployment
+
+name: Diet Tracker CI/CD
+
+on:
+  push:
+    branches: [ main, develop, release/* ]
+  pull_request:
+    branches: [ main, develop ]
+  release:
+    types: [ created ]
+
+env:
+  NODE_VERSION: '18.x'
+  EXPO_CLI_VERSION: 'latest'
+  JAVA_VERSION: '11'
+  RUBY_VERSION: '3.0'
+
+jobs:
+  # ============================================================================
+  # LINT AND CODE QUALITY
+  # ============================================================================
+  lint:
+    name: Lint and Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci --legacy-peer-deps
+
+    - name: Run ESLint
+      run: npm run lint
+
+    - name: Run Prettier check
+      run: npm run prettier:check
+
+    - name: Run TypeScript check
+      run: npm run type-check
+
+    - name: Check for security vulnerabilities
+      run: npm audit --audit-level high
+
+    - name: Upload lint results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: lint-results
+        path: |
+          eslint-report.json
+          prettier-report.json
+
+  # ============================================================================
+  # TESTING
+  # ============================================================================
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci --legacy-peer-deps
+
+    - name: Run unit tests
+      run: npm run test:unit
+
+    - name: Run integration tests
+      run: npm run test:integration
+
+    - name: Generate coverage report
+      run: npm run test:coverage
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage/lcov.info
+        flags: unittests
+        name: codecov-umbrella
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results
+        path: |
+          coverage/
+          test-results.xml
+
+  # ============================================================================
+  # SECURITY SCANNING
+  # ============================================================================
+  security:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    needs: lint
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci --legacy-peer-deps
+
+    - name: Run security audit
+      run: npm audit --audit-level moderate
+
+    - name: Scan for secrets
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: main
+        head: HEAD
+
+    - name: License compliance check
+      run: npx license-checker --production --onlyAllow 'MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC'
+
+  # ============================================================================
+  # BUILD ANDROID
+  # ============================================================================
+  build-android:
+    name: Build Android
+    runs-on: ubuntu-latest
+    needs: [test, security]
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/') || github.event_name == 'release'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Setup Java
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: ${{ env.JAVA_VERSION }}
+
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v2
+
+    - name: Install dependencies
+      run: npm ci --legacy-peer-deps
+
+    - name: Setup Expo
+      uses: expo/expo-github-action@v8
+      with:
+        expo-version: ${{ env.EXPO_CLI_VERSION }}
+        token: ${{ secrets.EXPO_TOKEN }}
+
+    - name: Configure app for production
+      run: |
+        echo "Configuring production environment"
+        npm run configure:production
+
+    - name: Build Android APK (Development)
+      if: github.ref == 'refs/heads/develop'
+      run: |
+        expo build:android --type apk --release-channel dev
+        
+    - name: Build Android AAB (Production)
+      if: github.ref == 'refs/heads/main' || github.event_name == 'release'
+      run: |
+        expo build:android --type app-bundle --release-channel production
+        
+    - name: Upload Android artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: android-build
+        path: |
+          *.apk
+          *.aab
+
+  # ============================================================================
+  # BUILD IOS
+  # ============================================================================
+  build-ios:
+    name: Build iOS
+    runs-on: macos-latest
+    needs: [test, security]
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/') || github.event_name == 'release'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Setup Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: ${{ env.RUBY_VERSION }}
+        bundler-cache: true
+
+    - name: Install dependencies
+      run: npm ci --legacy-peer-deps
+
+    - name: Setup Expo
+      uses: expo/expo-github-action@v8
+      with:
+        expo-version: ${{ env.EXPO_CLI_VERSION }}
+        token: ${{ secrets.EXPO_TOKEN }}
+
+    - name: Configure app for production
+      run: |
+        echo "Configuring production environment"
+        npm run configure:production
+
+    - name: Install iOS certificates
+      uses: apple-actions/import-codesign-certs@v1
+      with:
+        p12-file-base64: ${{ secrets.IOS_CERTIFICATE_P12 }}
+        p12-password: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+
+    - name: Install provisioning profile
+      uses: apple-actions/download-provisioning-profiles@v1
+      with:
+        bundle-id: com.diettracker.app
+        issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
+        api-key-id: ${{ secrets.APPSTORE_KEY_ID }}
+        api-private-key: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+
+    - name: Build iOS IPA
+      run: |
+        if [ "${{ github.ref }}" == "refs/heads/develop" ]; then
+          expo build:ios --release-channel dev
+        else
+          expo build:ios --release-channel production
+        fi
+
+    - name: Upload iOS artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: ios-build
+        path: "*.ipa"
+
+  # ============================================================================
+  # E2E TESTING
+  # ============================================================================
+  e2e-test:
+    name: E2E Testing
+    runs-on: ubuntu-latest
+    needs: [build-android]
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci --legacy-peer-deps
+
+    - name: Download Android build
+      uses: actions/download-artifact@v3
+      with:
+        name: android-build
+
+    - name: Run E2E tests
+      run: npm run test:e2e
+
+    - name: Upload E2E test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: e2e-results
+        path: |
+          e2e-test-results/
+          screenshots/
+          videos/
+
+  # ============================================================================
+  # DEPLOYMENT TO STAGING
+  # ============================================================================
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build-android, build-ios]
+    if: github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/heads/release/')
+    environment: staging
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci --legacy-peer-deps
+
+    - name: Setup Expo
+      uses: expo/expo-github-action@v8
+      with:
+        expo-version: ${{ env.EXPO_CLI_VERSION }}
+        token: ${{ secrets.EXPO_TOKEN }}
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: android-build
+
+    - name: Deploy to Expo staging
+      run: |
+        expo publish --release-channel staging
+        
+    - name: Deploy to TestFlight (iOS)
+      if: contains(github.event.head_commit.message, '[ios]') || github.event_name == 'release'
+      run: |
+        expo upload:ios --latest
+
+    - name: Deploy to Google Play Internal (Android)
+      if: contains(github.event.head_commit.message, '[android]') || github.event_name == 'release'
+      run: |
+        expo upload:android --latest --track internal
+
+    - name: Notify deployment
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        channel: '#deployments'
+        text: 'Staging deployment completed'
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # ============================================================================
+  # DEPLOYMENT TO PRODUCTION
+  # ============================================================================
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [e2e-test, deploy-staging]
+    if: github.ref == 'refs/heads/main' || github.event_name == 'release'
+    environment: production
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci --legacy-peer-deps
+
+    - name: Setup Expo
+      uses: expo/expo-github-action@v8
+      with:
+        expo-version: ${{ env.EXPO_CLI_VERSION }}
+        token: ${{ secrets.EXPO_TOKEN }}
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v3
+
+    - name: Deploy to Expo production
+      run: |
+        expo publish --release-channel production
+
+    - name: Deploy to App Store (iOS)
+      run: |
+        expo upload:ios --latest
+
+    - name: Deploy to Google Play (Android)
+      run: |
+        expo upload:android --latest --track production --rollout 0.1
+
+    - name: Create GitHub release
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ github.run_number }}
+        release_name: Release v${{ github.run_number }}
+        body: |
+          ## Changes in this Release
+          ${{ github.event.head_commit.message }}
+          
+          ## Downloads
+          - Android: [Download APK](link-to-apk)
+          - iOS: Available on TestFlight and App Store
+        draft: false
+        prerelease: false
+
+    - name: Notify production deployment
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        channel: '#deployments'
+        text: '🚀 Production deployment completed!'
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # ============================================================================
+  # POST-DEPLOYMENT MONITORING
+  # ============================================================================
+  post-deployment-check:
+    name: Post-deployment Health Check
+    runs-on: ubuntu-latest
+    needs: [deploy-production]
+    if: github.ref == 'refs/heads/main' || github.event_name == 'release'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Wait for deployment propagation
+      run: sleep 300 # Wait 5 minutes
+
+    - name: Health check - API endpoints
+      run: |
+        curl -f https://api.diettracker.app/health || exit 1
+        curl -f https://api.diettracker.app/version || exit 1
+
+    - name: Health check - App availability
+      run: |
+        # Check if app is accessible via Expo
+        npx expo-cli status --non-interactive
+
+    - name: Monitor error rates
+      run: |
+        # Custom script to check error rates from monitoring service
+        npm run monitor:check-errors
+
+    - name: Rollback if health checks fail
+      if: failure()
+      run: |
+        echo "Health checks failed, initiating rollback"
+        expo publish --release-channel production-rollback
+        
+    - name: Notify health check results
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        channel: '#deployments'
+        text: 'Post-deployment health check: ${{ job.status }}'
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
